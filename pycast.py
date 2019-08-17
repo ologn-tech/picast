@@ -36,15 +36,12 @@ from time import sleep
 
 class Settings:
     player_select = 2
-    # 0: non-RPi systems. (using vlc)
-    # 1: player1 has lower latency.
-    # 2: player2 handles still images and sound better.
+    # 1: vlc
+    # 2: Raspberry-Pi
     sound_output_select = 0
     # 0: HDMI sound output
     # 1: 3.5mm audio jack output
     # 2: alsa
-    disable_1920_1080_60fps = 1
-    enable_mouse_keyboard = 1
 
 cur_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -144,12 +141,6 @@ class D2():
                 uibcport = uibcport.split('=')
                 uibcport = uibcport[1]
                 logging.info('uibcport:' + uibcport + "\n")
-                if 'none' not in uibcport and Settings.enable_mouse_keyboard == 1:
-                    self.pkill(['control.bin', 'controlhidc.bin'])
-                    if ('hidc_cap_list=none' not in entry):
-                        pid = subprocess.Popen([os.path.join(cur_dir, 'control', 'controlhidc.bin'), uibcport])
-                    elif ('generic_cap_list=none' not in entry):
-                        pid = subprocess.Popen([os.path.join(cur_dir, 'control', 'control.bin'), uibcport])
 
     def start_server(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -177,16 +168,11 @@ class D2():
         return sock, idrsock, data
 
     def launchplayer(self, player_select):
-        self.pkill(['vlc', 'player.bin', 'h264.bin'])
+        self.pkill(['vlc', 'omxplayer'])
         command_list = None
         if player_select == 1:
             command_list = ['vlc', '--fullscreen', 'rtp://0.0.0.0:1028/wfd1.0/streamid=0']
-        elif player_select == 1:
-            command_list = [os.path.join(cur_dir, 'player', 'player.bin'), self.idrsockport,
-                            str(Settings.sound_output_select)]
         elif player_select == 2:
-            command_list = [os.path.join(cur_dir, 'h264', 'h264.bin'), self.idrsockport, str(Settings.sound_output_select)]
-        elif player_select == 3:
             command_list = ['omxplayer', 'rtp://0.0.0.0:1028', '-n', '-1', '--live']
         player_pid = subprocess.Popen(command_list)
 
@@ -212,12 +198,9 @@ class D2():
         else:
             msg = msg + 'wfd_audio_codecs: AAC 00000001 00\r\n'
 
-        if Settings.disable_1920_1080_60fps == 1:
-            msg = msg + 'wfd_video_formats: 00 00 02 04 0001FEFF 3FFFFFFF 00000FFF 00 0000 0000 00 none none\r\n'
-        else:
-            msg = msg + 'wfd_video_formats: 00 00 02 04 0001FFFF 3FFFFFFF 00000FFF 00 0000 0000 00 none none\r\n'
-
-        msg = msg + 'wfd_3d_video_formats: none\r\n' \
+        msg = msg \
+              + 'wfd_video_formats: 00 00 02 04 0001FFFF 3FFFFFFF 00000FFF 00 0000 0000 00 none none\r\n' \
+              + 'wfd_3d_video_formats: none\r\n' \
               + 'wfd_coupled_sink: none\r\n' \
               + 'wfd_display_edid: none\r\n' \
               + 'wfd_connector_type: 05\r\n' \
@@ -302,7 +285,7 @@ class D2():
                             sleep(0.01)
                             watchdog = watchdog + 1
                             if watchdog == 70 / 0.01:
-                                self.pkill(['control.bin', 'controlhidc.bin', 'vlc', 'player.bin', 'h264.bin'])
+                                self.pkill(['vlc', 'omxplayer'])
                                 sleep(1)
                                 break
                         else:
@@ -324,7 +307,7 @@ class D2():
                 logging.debug(data)
                 watchdog = 0
                 if len(data) == 0 or 'wfd_trigger_method: TEARDOWN' in data:
-                    self.pkill(['control.bin', 'controlhidc.bin', 'vlc', 'player.bin', 'h264.bin'])
+                    self.pkill(['vlc', 'omxplayer'])
                     sleep(1)
                     break
                 elif 'wfd_video_formats' in data:
@@ -346,7 +329,7 @@ class D2():
         sock.close()
 
 
-class LazyCast():
+class PyCast():
 
     def __init__(self):
         self.wpalib = WpaLib()
@@ -365,7 +348,7 @@ class LazyCast():
         else:
             wpacli = WpaCli()
             wpacli.start_p2p_find()
-            wpacli.set_device_name("lazycast")
+            wpacli.set_device_name("pycast")
             wpacli.set_device_type("7-0050F204-1")
             wpacli.set_p2p_go_ht40()
             wpacli.wfd_subelem_set("0 00060151022a012c")
@@ -386,3 +369,7 @@ class LazyCast():
         while(True):
             wpacli.set_wps_pin(p2p_interface, "12345678", 300)
             d2.run()
+
+
+if __name__ == '__main__':
+    sys.exit(PyCast().run())
