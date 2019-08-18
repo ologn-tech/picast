@@ -81,36 +81,36 @@ class WpaCli:
         command_list = command_str.split(" ") + arg.split(" ")
         p = subprocess.Popen(command_list, stdout=subprocess.PIPE)
         stdout = p.communicate()[0]
-        return stdout
+        return stdout.splitlines()
 
     def start_p2p_find(self):
-        status = self.cmd("p2p-find type=progressive")
-        if status != "OK\n":
+        status = self.cmd("p2p_find type=progressive")
+        if "OK" not in status:
             raise Exception("Fail to start p2p find.")
 
     def stop_p2p_find(self):
-        status = self.cmd("p2p-stop-find")
-        if status != "OK\n":
+        status = self.cmd("p2p_stop-find")
+        if "OK" not in status:
             raise Exception("Fail to stop p2p find.")
 
     def set_device_name(self, name):
         status = self.cmd("set device_name {}".format(name))
-        if status != "OK\n":
+        if "OK" not in status:
             raise Exception("Fail to set device name {}".format(name))
 
     def set_device_type(self, type):
         status = self.cmd("set device_type {}".format(type))
-        if status != "OK\n":
+        if "OK" not in status:
             raise Exception("Fail to set device type {}".format(type))
 
     def set_p2p_go_ht40(self):
         status = self.cmd("set p2p_go_ht40 1")
-        if status != "OK\n":
+        if "OK" not in status:
             raise Exception("Fail to set p2p_go_ht40")
 
     def wfd_subelem_set(self, val):
         status = self.cmd("wfd_subelem_set {}".format(val))
-        if status != "OK\n":
+        if "OK" not in status:
             raise Exception("Fail to wfd_subelem_set.")
 
     def p2p_group_add(self, name):
@@ -124,7 +124,7 @@ class WpaCli:
         selected = None
         interfaces = []
         status = self.cmd("interface")
-        for ln in status.splitlines():
+        for ln in status:
             if str(ln).startswith("Selected interface"):
                 selected = re.match("Selected interface \'(([0-9][a-z][A-Z]-)+)\'", ln)
             elif str(ln) == "Available interfaces:":
