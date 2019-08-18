@@ -68,11 +68,11 @@ class ProcessManager(object):
         self.dhcpd = None
 
     def start_udhcpd(self, interface):
+        fd, self.conf_path = tempfile.mkstemp(suffix='.conf')
         conf = "start  {}\nend {}\ninterface {}\noption subnet {}\noption lease {}\n".format(
             Settings.leaseaddress, Settings.leaseaddress, interface, Settings.netmask, Settings.timeout)
-        with tempfile.mkstemp(suffix='.conf') as c:
+        with open(self.conf_path, 'w') as c:
             c.write(conf)
-            self.conf_path = c.name
         self.dhcpd = subprocess.Popen(["sudo", "udhcpd", self.conf_path])
 
     def launch_player(self):
