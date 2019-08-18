@@ -121,7 +121,7 @@ class WpaCli:
             raise PyCastException("Fail to start p2p find.")
 
     def stop_p2p_find(self):
-        status = self.cmd("p2p_stop-find")
+        status = self.cmd("p2p_stop_find")
         if 'OK' not in status:
             raise PyCastException("Fail to stop p2p find.")
 
@@ -401,6 +401,7 @@ def run():
             wpacli.p2p_group_add(Settings.wifi_p2p_group_name)
             sleep(1)
             p2p_interface = wpacli.get_p2p_interface()
+            logger.info("Start p2p interface: {}".format(p2p_interface))
             os.system("sudo ifconfig {} {}".format(p2p_interface, Settings.myaddress))
         player_manager = ProcessManager()
         player_manager.start_udhcpd(p2p_interface)
