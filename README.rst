@@ -1,18 +1,19 @@
-picast: A Simple Wireless Display Receiver
-==========================================
+picast: A Simple Wireless Display Receiver on Raspberry Pi
+===========================================================
 
 Description
 -----------
 
-picast is a simple wifi display receiver written by Python for Raspberry Pi.
+picast is a simple wifi display receiver written by Python on Raspberry Pi.
 
 
 Installation
 ------------
 
-On Rasbpian / Raspberry Pi Zero W/WH, or Raspberry Pi 3
+Run apt install command on Rasbpian / Raspberry Pi Zero W/WH, or Raspberry Pi 3
 
 .. code-block::
+
     $ sudo apt install net-tools python3 udhcpd omxplayer vlc
     $ sudo apt install --no-install-recommends lxde pulseaudio
 
@@ -23,6 +24,7 @@ Usage
 -----
 
 .. code-block::
+
     $ python3 picast.py
 
 Then, search for the wireless display named "picast" on the source device you want to cast.
