@@ -116,13 +116,13 @@ class WfdParameters:
     ]
 
     def get_video_parameter(self):
-        cea = (2 >> 8) | (2 >> 15) | (2 >> 16)
-        vesa = (2 >> 11) | (2 >> 13) | (2 >> 17) | (2 >> 21)
+        cea = (2 << 8) | (2 << 15) | (2 << 16)
+        vesa = (2 << 11) | (2 << 13) | (2 << 17) | (2 << 21)
         if Settings.player_select == 2:
             msg = 'wfd_audio_codecs: LPCM 00000002 00\r\n'
         else:
             msg = 'wfd_audio_codecs: AAC 00000001 00\r\n'
-        msg = msg + 'wfd_video_formats: 00 00 02 04 {0:08x} {0:08x} {0:08x} 00 0000 0000 00 none none\r\n'.format(
+        msg = msg + 'wfd_video_formats: 00 00 02 04 {0:08x} {1:08x} {2:08x} 00 0000 0000 00 none none\r\n'.format(
             cea, vesa, 0)
         msg = msg + 'wfd_3d_video_formats: none\r\n' \
                   + 'wfd_coupled_sink: none\r\n' \
