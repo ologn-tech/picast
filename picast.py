@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-This software is a pycast, a simple wireless display receiver for Raspberry Pi
+picast - a simple wireless display receiver for Raspberry Pi
 
     Copyright (C) 2019 Hiroshi Miura
     Copyright (C) 2018 Hsun-Wei Cho
@@ -39,7 +39,7 @@ class Settings:
     # 0: HDMI sound output
     # 1: 3.5mm audio jack output
     # 2: alsa
-    device_name = 'pycast'
+    device_name = 'picast'
     wifi_p2p_group_name = 'persistent'
     pin = '12345678'
     timeout = 300
@@ -149,7 +149,7 @@ class WfdParameters:
         return msg
 
 
-class PyCastException(Exception):
+class PiCastException(Exception):
     pass
 
 
@@ -165,7 +165,7 @@ class ProcessManager(object):
     def __init__(self):
         self.player = None
         self.dhcpd = None
-        self.logger = getLogger("PyCast")
+        self.logger = getLogger("PiCast")
 
     def start_udhcpd(self, interface):
         fd, self.conf_path = tempfile.mkstemp(suffix='.conf')
@@ -206,7 +206,7 @@ class WpaCli:
     """
 
     def __init__(self):
-        self.logger = getLogger("PyCast")
+        self.logger = getLogger("PiCast")
         pass
 
     def cmd(self, arg):
@@ -220,37 +220,37 @@ class WpaCli:
         self.logger.debug("wpa_cli p2p_find type=progressive")
         status = self.cmd("p2p_find type=progressive")
         if 'OK' not in status:
-            raise PyCastException("Fail to start p2p find.")
+            raise PiCastException("Fail to start p2p find.")
 
     def stop_p2p_find(self):
         self.logger.debug("wpa_cli p2p_stop_find")
         status = self.cmd("p2p_stop_find")
         if 'OK' not in status:
-            raise PyCastException("Fail to stop p2p find.")
+            raise PiCastException("Fail to stop p2p find.")
 
     def set_device_name(self, name):
         self.logger.debug("wpa_cli set device_name {}".format(name))
         status = self.cmd("set device_name {}".format(name))
         if 'OK' not in status:
-            raise PyCastException("Fail to set device name {}".format(name))
+            raise PiCastException("Fail to set device name {}".format(name))
 
     def set_device_type(self, type):
         self.logger.debug("wpa_cli set device_type {}".format(type))
         status = self.cmd("set device_type {}".format(type))
         if 'OK' not in status:
-            raise PyCastException("Fail to set device type {}".format(type))
+            raise PiCastException("Fail to set device type {}".format(type))
 
     def set_p2p_go_ht40(self):
         self.logger.debug("wpa_cli set p2p_go_ht40 1")
         status = self.cmd("set p2p_go_ht40 1")
         if 'OK' not in status:
-            raise PyCastException("Fail to set p2p_go_ht40")
+            raise PiCastException("Fail to set p2p_go_ht40")
 
     def wfd_subelem_set(self, val):
         self.logger.debug("wpa_cli wfd_subelem_set {}".format(val))
         status = self.cmd("wfd_subelem_set {}".format(val))
         if 'OK' not in status:
-            raise PyCastException("Fail to wfd_subelem_set.")
+            raise PiCastException("Fail to wfd_subelem_set.")
 
     def p2p_group_add(self, name):
         self.logger.debug("wpa_cli p2p_group_add {}".format(name))
@@ -287,10 +287,10 @@ class WpaCli:
         return False
 
 
-class PyCast:
+class PiCast:
 
     def __init__(self, log=False, loglevel=DEBUG):
-        logger = getLogger("PyCast")
+        logger = getLogger("PiCast")
         handler = StreamHandler()
         handler.setLevel(DEBUG)
         logger.setLevel(loglevel)
@@ -311,7 +311,7 @@ class PyCast:
                 connectcounter = connectcounter + 1
                 if connectcounter > 1024:
                     sock.close()
-                    logger = getLogger("PyCast")
+                    logger = getLogger("PiCast")
                     logger.debug("Exit because of caught maximum connection timeouts(1024 x 180sec ).")
                     return None, None
             else:
@@ -325,7 +325,7 @@ class PyCast:
         return sock, idrsock
 
     def cast_seq1(self, sock):
-        logger = getLogger("PyCast.cseq1")
+        logger = getLogger("PiCast.cseq1")
         data = (sock.recv(1000))
         logger.debug("<-{}".format(data))
         s_data = 'RTSP/1.0 200 OK\r\nCSeq: 1\r\n\Public: org.wfa.wfd1.0, SET_PARAMETER, GET_PARAMETER\r\n\r\n'
@@ -333,7 +333,7 @@ class PyCast:
         sock.sendall(s_data.encode("UTF-8"))
 
     def cast_seq100(self, sock):
-        logger = getLogger("PyCast.cseq100")
+        logger = getLogger("PiCast.cseq100")
         s_data = 'OPTIONS * RTSP/1.0\r\nCSeq: 100\r\nRequire: org.wfa.wfd1.0\r\n\r\n'
         logger.debug("<-{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
@@ -344,7 +344,7 @@ class PyCast:
         # RTSP M3 response
         #
 
-        logger = getLogger("PyCast.cseq2")
+        logger = getLogger("PiCast.cseq2")
         data = (sock.recv(1000))
         logger.debug("->{}".format(data))
         msg = 'wfd_client_rtp_ports: RTP/AVP/UDP;unicast 1028 0 mode=play\r\n'
@@ -355,7 +355,7 @@ class PyCast:
         sock.sendall(m3resp.encode("UTF-8"))
 
     def cast_seq3(self, sock):
-        logger = getLogger("PyCast.cseq3")
+        logger = getLogger("PiCast.cseq3")
         data = (sock.recv(1000)).decode("UTF-8")
         logger.debug("->{}".format(data))
         s_data = 'RTSP/1.0 200 OK\r\nCSeq: 3\r\n\r\n'
@@ -363,7 +363,7 @@ class PyCast:
         sock.sendall(s_data.encode("UTF-8"))
 
     def cast_seq4(self, sock):
-        logger = getLogger("PyCast.cseq4")
+        logger = getLogger("PiCast.cseq4")
         data = (sock.recv(1000))
         logger.debug("->{}".format(data))
         s_data = 'RTSP/1.0 200 OK\r\nCSeq: 4\r\n\r\n'
@@ -371,7 +371,7 @@ class PyCast:
         sock.sendall(s_data.encode("UTF-8"))
 
     def cast_seq5(self, sock):
-        logger = getLogger("PyCast.cseq5")
+        logger = getLogger("PiCast.cseq5")
         m6req = 'SETUP rtsp://192.168.101.80/wfd1.0/streamid=0 RTSP/1.0\r\n' \
                 + 'CSeq: 101\r\n' \
                 + 'Transport: RTP/AVP/UDP;unicast;client_port=1028\r\n\r\n'
@@ -391,7 +391,7 @@ class PyCast:
         return sessionid
 
     def cast_seq6(self, sock, sessionid):
-        logger = getLogger("PyCast.cseq6")
+        logger = getLogger("PiCast.cseq6")
         m7req = 'PLAY rtsp://192.168.101.80/wfd1.0/streamid=0 RTSP/1.0\r\n' \
                 + 'CSeq: 102\r\n' \
                 + 'Session: ' + str(sessionid) + '\r\n\r\n'
@@ -401,7 +401,7 @@ class PyCast:
         logger.debug("->{}".format(data))
 
     def negotiate(self, sock):
-        logger = getLogger("PyCast.negotiation")
+        logger = getLogger("PiCast.negotiation")
         self.cast_seq1(sock)
         self.cast_seq100(sock)
         self.cast_seq_m3(sock)
@@ -412,7 +412,7 @@ class PyCast:
         logger.debug("---- Negotiation successful ----")
 
     def start(self, sock, idrsock):
-        logger = getLogger("PyCast.control")
+        logger = getLogger("PiCast.control")
         csnum = 102
         watchdog = 0
         while True:
@@ -486,7 +486,7 @@ class PyCast:
         wpacli.p2p_group_add(Settings.wifi_p2p_group_name)
 
     def set_p2p_interface(self):
-        logger = getLogger("PyCast")
+        logger = getLogger("PiCast")
         wpacli = WpaCli()
         if wpacli.check_p2p_interface():
             logger.info("Already set a p2p interface.")
@@ -496,13 +496,13 @@ class PyCast:
             sleep(3)
             p2p_interface = wpacli.get_p2p_interface()
             if p2p_interface is None:
-                raise PyCastException("Can not create P2P Wifi interface.")
+                raise PiCastException("Can not create P2P Wifi interface.")
             logger.info("Start p2p interface: {}".format(p2p_interface))
             os.system("sudo ifconfig {} {}".format(p2p_interface, Settings.myaddress))
         return p2p_interface
 
     def run(self):
-        logger = getLogger("PyCast")
+        logger = getLogger("PiCast")
         self.player_manager = ProcessManager()
         wpacli = WpaCli()
         try:
@@ -519,11 +519,11 @@ class PyCast:
                 fcntl.fcntl(idrsock, fcntl.F_SETFL, os.O_NONBLOCK)
                 self.start(sock, idrsock)
                 self.player_manager.terminate()
-        except PyCastException as ex:
+        except PiCastException as ex:
             if self.player_manager is not None:
                 self.player_manager.terminate()
             logger.exception("Got error: {}".format(ex))
 
 
 if __name__ == '__main__':
-    sys.exit(PyCast(log=True, loglevel=DEBUG).run())
+    sys.exit(PiCast(log=True, loglevel=DEBUG).run())

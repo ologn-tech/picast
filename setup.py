@@ -11,10 +11,10 @@ def readme():
         return readmef.read()
 
 
-setup(name='pycast',
+setup(name='picast',
       version='0.1',
       description='A simple wireless display receiver for Raspberry Pi',
-      url='http://github.com/miurahr/pycast',
+      url='http://github.com/miurahr/picast',
       license='GPL3',
       long_description=readme(),
       author='Hioshi Miura',

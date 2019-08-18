@@ -1,14 +1,16 @@
-pycast: A Simple Wireless Display Receiver
+picast: A Simple Wireless Display Receiver
 ==========================================
 
 Description
 -----------
 
-pycast is a simple wifi display receiver written by Python.
+picast is a simple wifi display receiver written by Python for Raspberry Pi.
 
 
 Installation
 ------------
+
+On Rasbpian / Raspberry Pi Zero W/WH, or Raspberry Pi 3
 
 .. code-block::
     $ sudo apt install net-tools python3 udhcpd omxplayer vlc
@@ -21,9 +23,9 @@ Usage
 -----
 
 .. code-block::
-    $ python3 pycast.py
+    $ python3 picast.py
 
-Then, search for the wireless display named "pycast" on the source device you want to cast.
+Then, search for the wireless display named "picast" on the source device you want to cast.
 Use "12345678" for a WPS PIN number.
 It is recommended to initiate the termination of the receiver on the source side.
 
@@ -33,9 +35,9 @@ and this connection can be reused for other purposes like SSH.
 Known issues
 ------------
 
-* Resolution: pycast advertised all resolutions rather than connected display resolution.
+* Resolution: picast advertised some fixed resolutions rather than connected display resolution.
 
-* Latency: Limited by the implementation of the rtp player used.
+* Latency: Limited by the implementation of the rtp player, omxplayer, used.
 
 * WiFi: The on-board WiFi chip on Pi 3/Zero W only supports 2.4GHz. Due to the overcrowded nature of the 2.4GHz
   spectrum and the use of unreliable rtp transmission, you may experience some video glitching/audio stuttering.
