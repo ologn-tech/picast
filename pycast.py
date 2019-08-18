@@ -48,6 +48,92 @@ class Settings:
     netmask = '255.255.255.0'
 
 
+class WfdParameters:
+    resolutions_cea = [
+        (0,   640,  480, 60),  # p60
+        (1,   720,  480, 60),  # p60
+        (2,   720,  480, 60),  # i60
+        (3,   720,  480, 50),  # p50
+        (4,   720,  576, 50),  # i50
+        (5,  1280,  720, 30),  # p30
+        (6,  1280,  720, 60),  # p60
+        (7,  1280, 1080, 30),  # p30
+        (8,  1920, 1080, 60),  # p60
+        (9,  1920, 1080, 60),  # i60
+        (10, 1280,  720, 25),  # p25
+        (11, 1280,  720, 50),  # p50
+        (12, 1920, 1080, 25),  # p25
+        (13, 1920, 1080, 50),  # p50
+        (14, 1920, 1080, 50),  # i50
+        (15, 1280,  720, 24),  # p24
+        (16, 1920, 1080, 24),  # p24
+    ]
+
+    resolutions_vesa = [
+        (0,   800,  600, 30),  # p30
+        (1,   800,  600, 60),  # p60
+        (2,  1024,  768, 30),  # p30
+        (3,  1024,  768, 60),  # p60
+        (4,  1152,  854, 30),  # p30
+        (5,  1152,  854, 60),  # p60
+        (6,  1280,  768, 30),  # p30
+        (7,  1280,  768, 60),  # p60
+        (8,  1280,  800, 30),  # p30
+        (9,  1280,  800, 60),  # p60
+        (10, 1360,  768, 30),  # p30
+        (11, 1360,  768, 60),  # p60
+        (12, 1366,  768, 30),  # p30
+        (13, 1366,  768, 60),  # p60
+        (14, 1280, 1024, 30),  # p30
+        (15, 1280, 1024, 60),  # p60
+        (16, 1440, 1050, 30),  # p30
+        (17, 1440, 1050, 60),  # p60
+        (18, 1440,  900, 30),  # p30
+        (19, 1440,  900, 60),  # p60
+        (20, 1600,  900, 30),  # p30
+        (21, 1600,  900, 60),  # p60
+        (22, 1600, 1200, 30),  # p30
+        (23, 1600, 1200, 60),  # p60
+        (24, 1680, 1024, 30),  # p30
+        (25, 1680, 1024, 60),  # p60
+        (26, 1680, 1050, 30),  # p30
+        (27, 1680, 1050, 60),  # p60
+        (28, 1920, 1200, 30),  # p30
+    ]
+
+    resolutions_hh = [(0, 800, 400, 30),
+                      (1, 800, 480, 60),
+                      (2, 854, 480, 30),
+                      (3, 854, 480, 60),
+                      (4, 864, 480, 30),
+                      (5, 864, 480, 60),
+                      (6, 640, 360, 30),
+                      (7, 640, 360, 60),
+                      (8, 960, 540, 30),
+                      (9, 960, 540, 60),
+                      (10, 848, 480, 30),
+                      (11, 848, 480, 60),
+    ]
+
+    def get_video_parameter(self):
+        cea = (2 >> 8) | (2 >> 15) | (2 >> 16)
+        vesa = (2 >> 11) | (2 >> 13) | (2 >> 17) | (2 >> 21)
+        if Settings.player_select == 2:
+            msg = 'wfd_audio_codecs: LPCM 00000002 00\r\n'
+        else:
+            msg = 'wfd_audio_codecs: AAC 00000001 00\r\n'
+        msg = msg + 'wfd_video_formats: 00 00 02 04 {0:08x} {0:08x} {0:08x} 00 0000 0000 00 none none\r\n'.format(
+            cea, vesa, 0)
+        msg = msg + 'wfd_3d_video_formats: none\r\n' \
+                  + 'wfd_coupled_sink: none\r\n' \
+                  + 'wfd_display_edid: none\r\n' \
+                  + 'wfd_connector_type: 05\r\n' \
+                  + 'wfd_uibc_capability: none\r\n' \
+                  + 'wfd_standby_resume_capability: none\r\n' \
+                  + 'wfd_content_protection: none\r\n'
+        return msg
+
+
 class PyCastException(Exception):
     pass
 
@@ -197,19 +283,6 @@ class PyCast:
         logger.propagate = log
         self.logger = logger
 
-    def uibcstart(self, sock, data):
-        logger = getLogger("PyCast")
-        messagelist = data.splitlines()
-        for entry in messagelist:
-            if 'wfd_uibc_capability:' in entry:
-                entrylist = entry.split(';')
-                uibcport = entrylist[-1]
-                uibcport = uibcport.split('\r')
-                uibcport = uibcport[0]
-                uibcport = uibcport.split('=')
-                uibcport = uibcport[1]
-                logger.info('uibcport: {}'.format(uibcport))
-
     def wait_connection(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_address = ('192.168.173.80', 7236)
@@ -252,25 +325,15 @@ class PyCast:
         data = (sock.recv(1000))
         logger.debug("->{}".format(data))
 
-    def cast_seq2(self, sock):
+    def cast_seq_m3(self, sock):
+        # RTSP M3 response
+        #
+
         logger = getLogger("PyCast.cseq2")
         data = (sock.recv(1000))
         logger.debug("->{}".format(data))
         msg = 'wfd_client_rtp_ports: RTP/AVP/UDP;unicast 1028 0 mode=play\r\n'
-        if Settings.player_select == 2:
-            msg = msg + 'wfd_audio_codecs: LPCM 00000002 00\r\n'
-        else:
-            msg = msg + 'wfd_audio_codecs: AAC 00000001 00\r\n'
-
-        msg = msg + 'wfd_video_formats: 00 00 02 04 0001FFFF 3FFFFFFF 00000FFF 00 0000 0000 00 none none\r\n' \
-                  + 'wfd_3d_video_formats: none\r\n' \
-                  + 'wfd_coupled_sink: none\r\n' \
-                  + 'wfd_display_edid: none\r\n' \
-                  + 'wfd_connector_type: 05\r\n' \
-                  + 'wfd_uibc_capability: none\r\n' \
-                  + 'wfd_standby_resume_capability: none\r\n' \
-                  + 'wfd_content_protection: none\r\n'
-
+        msg = msg + WfdParameters().get_video_parameter()
         m3resp = 'RTSP/1.0 200 OK\r\nCSeq: 2\r\n' + 'Content-Type: text/parameters\r\nContent-Length: ' + str(
             len(msg)) + '\r\n\r\n' + msg
         logger.debug("<--------{}".format(m3resp))
@@ -283,7 +346,6 @@ class PyCast:
         s_data = 'RTSP/1.0 200 OK\r\nCSeq: 3\r\n\r\n'
         logger.debug("<-{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
-        self.uibcstart(sock, data)
 
     def cast_seq4(self, sock):
         logger = getLogger("PyCast.cseq4")
@@ -327,7 +389,7 @@ class PyCast:
         logger = getLogger("PyCast.negotiation")
         self.cast_seq1(sock)
         self.cast_seq100(sock)
-        self.cast_seq2(sock)
+        self.cast_seq_m3(sock)
         self.cast_seq3(sock)
         self.cast_seq4(sock)
         sessionid = self.cast_seq5(sock)
@@ -406,9 +468,6 @@ class PyCast:
         wpacli.wfd_subelem_set("0 00060151022a012c")
         wpacli.wfd_subelem_set("1 0006000000000000")
         wpacli.wfd_subelem_set("6 000700000000000000")
-        # fixme: detect existent persisntent group and use it
-        # perentry="$(wpa_cli list_networks | grep "\[DISABLED\]\[P2P-PERSISTENT\]" | tail -1)"
-        # networkid=${perentry%%D*}
         wpacli.p2p_group_add(Settings.wifi_p2p_group_name)
 
     def set_p2p_interface(self):
