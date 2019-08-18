@@ -81,36 +81,36 @@ class WpaCli:
         command_list = command_str.split(" ") + arg.split(" ")
         p = subprocess.Popen(command_list, stdout=subprocess.PIPE)
         stdout = p.communicate()[0]
-        return stdout.splitlines()
+        return stdout.decode('UTF-8').splitlines()
 
     def start_p2p_find(self):
         status = self.cmd("p2p_find type=progressive")
-        if "OK" not in status:
+        if 'OK' not in status:
             raise Exception("Fail to start p2p find.")
 
     def stop_p2p_find(self):
         status = self.cmd("p2p_stop-find")
-        if "OK" not in status:
+        if 'OK' not in status:
             raise Exception("Fail to stop p2p find.")
 
     def set_device_name(self, name):
         status = self.cmd("set device_name {}".format(name))
-        if "OK" not in status:
+        if 'OK' not in status:
             raise Exception("Fail to set device name {}".format(name))
 
     def set_device_type(self, type):
         status = self.cmd("set device_type {}".format(type))
-        if "OK" not in status:
+        if 'OK' not in status:
             raise Exception("Fail to set device type {}".format(type))
 
     def set_p2p_go_ht40(self):
         status = self.cmd("set p2p_go_ht40 1")
-        if "OK" not in status:
+        if 'OK' not in status:
             raise Exception("Fail to set p2p_go_ht40")
 
     def wfd_subelem_set(self, val):
         status = self.cmd("wfd_subelem_set {}".format(val))
-        if "OK" not in status:
+        if 'OK' not in status:
             raise Exception("Fail to wfd_subelem_set.")
 
     def p2p_group_add(self, name):
@@ -125,9 +125,11 @@ class WpaCli:
         interfaces = []
         status = self.cmd("interface")
         for ln in status:
-            if str(ln).startswith("Selected interface"):
-                selected = re.match("Selected interface \'(([0-9][a-z][A-Z]-)+)\'", ln)
-            elif str(ln) == "Available interfaces:":
+            if ln.startswith("Selected interface"):
+                selected = re.match(r"Selected interface\s\'(.+)\'$", ln).group(1)
+            elif ln.startswith("Available interfaces:"):
+                pass
+            else:
                 interfaces.append(str(ln))
         return selected, interfaces
 
