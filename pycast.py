@@ -29,12 +29,6 @@ from time import sleep
 
 from logging import getLogger, StreamHandler, DEBUG
 
-logger = getLogger(__name__)
-handler = StreamHandler()
-handler.setLevel(DEBUG)
-logger.setLevel(DEBUG)
-logger.addHandler(handler)
-logger.propagate = True
 
 
 class Settings:
@@ -52,6 +46,10 @@ class Settings:
     myaddress = '192.168.173.1'
     leaseaddress = '192.168.173.80'
     netmask = '255.255.255.0'
+
+
+class PyCastException(Exception):
+    pass
 
 
 class ProcessManager(object):
@@ -120,32 +118,32 @@ class WpaCli:
     def start_p2p_find(self):
         status = self.cmd("p2p_find type=progressive")
         if 'OK' not in status:
-            raise Exception("Fail to start p2p find.")
+            raise PyCastException("Fail to start p2p find.")
 
     def stop_p2p_find(self):
         status = self.cmd("p2p_stop-find")
         if 'OK' not in status:
-            raise Exception("Fail to stop p2p find.")
+            raise PyCastException("Fail to stop p2p find.")
 
     def set_device_name(self, name):
         status = self.cmd("set device_name {}".format(name))
         if 'OK' not in status:
-            raise Exception("Fail to set device name {}".format(name))
+            raise PyCastException("Fail to set device name {}".format(name))
 
     def set_device_type(self, type):
         status = self.cmd("set device_type {}".format(type))
         if 'OK' not in status:
-            raise Exception("Fail to set device type {}".format(type))
+            raise PyCastException("Fail to set device type {}".format(type))
 
     def set_p2p_go_ht40(self):
         status = self.cmd("set p2p_go_ht40 1")
         if 'OK' not in status:
-            raise Exception("Fail to set p2p_go_ht40")
+            raise PyCastException("Fail to set p2p_go_ht40")
 
     def wfd_subelem_set(self, val):
         status = self.cmd("wfd_subelem_set {}".format(val))
         if 'OK' not in status:
-            raise Exception("Fail to wfd_subelem_set.")
+            raise PyCastException("Fail to wfd_subelem_set.")
 
     def p2p_group_add(self, name):
         status = self.cmd("p2p_group_add {}".format(name))
@@ -186,6 +184,7 @@ class D2:
         self.player_manager = playermanager
 
     def uibcstart(self, sock, data):
+        logger = getlogger()
         messagelist = data.split('\r\n\r\n')
         for entry in messagelist:
             if 'wfd_uibc_capability:' in entry:
@@ -223,6 +222,7 @@ class D2:
         return sock, idrsock, data
 
     def run(self):
+        logger = getlogger()
         sock, idrsock, data = self.start_server()
         logger.debug("---M1--->\n" + data)
         s_data = 'RTSP/1.0 200 OK\r\nCSeq: 1\r\n\Public: org.wfa.wfd1.0, SET_PARAMETER, GET_PARAMETER\r\n\r\n'
@@ -370,34 +370,48 @@ class D2:
         sock.close()
 
 
+def getlogger():
+    logger = getLogger("PyCast")
+    handler = StreamHandler()
+    handler.setLevel(DEBUG)
+    logger.setLevel(DEBUG)
+    logger.addHandler(handler)
+    logger.propagate = True
+    return logger
+
 def run():
     wpacli = WpaCli()
-    if wpacli.check_p2p_interface():
-        logger.info("Already on;")
-        p2p_interface = wpacli.get_p2p_interface()
-    else:
-        wpacli.start_p2p_find()
-        wpacli.set_device_name(Settings.device_name)
-        wpacli.set_device_type("7-0050F204-1")
-        wpacli.set_p2p_go_ht40()
-        wpacli.wfd_subelem_set("0 00060151022a012c")
-        wpacli.wfd_subelem_set("1 0006000000000000")
-        wpacli.wfd_subelem_set("6 000700000000000000")
-        # fixme: detect existent persisntent group and use it
-        # perentry="$(wpa_cli list_networks | grep "\[DISABLED\]\[P2P-PERSISTENT\]" | tail -1)"
-        # networkid=${perentry%%D*}
-        wpacli.p2p_group_add(Settings.wifi_p2p_group_name)
-        sleep(5)
-        p2p_interface = wpacli.get_p2p_interface()
-        os.system("sudo ifconfig {} {}".format(p2p_interface, Settings.myaddress))
-    wpacli = WpaCli()
-    player_manager = ProcessManager()
-    player_manager.start_udhcpd(p2p_interface)
-    d2 = D2(player_manager)
-    while (True):
-        wpacli.set_wps_pin(p2p_interface, Settings.pin, Settings.timeout)
-        d2.run()
-    player_manager.terminate()
+    logger = getlogger()
+    player_manager = None
+    try:
+        if wpacli.check_p2p_interface():
+            logger.info("Already on;")
+            p2p_interface = wpacli.get_p2p_interface()
+        else:
+            wpacli.start_p2p_find()
+            wpacli.set_device_name(Settings.device_name)
+            wpacli.set_device_type("7-0050F204-1")
+            wpacli.set_p2p_go_ht40()
+            wpacli.wfd_subelem_set("0 00060151022a012c")
+            wpacli.wfd_subelem_set("1 0006000000000000")
+            wpacli.wfd_subelem_set("6 000700000000000000")
+            # fixme: detect existent persisntent group and use it
+            # perentry="$(wpa_cli list_networks | grep "\[DISABLED\]\[P2P-PERSISTENT\]" | tail -1)"
+            # networkid=${perentry%%D*}
+            wpacli.p2p_group_add(Settings.wifi_p2p_group_name)
+            sleep(1)
+            p2p_interface = wpacli.get_p2p_interface()
+            os.system("sudo ifconfig {} {}".format(p2p_interface, Settings.myaddress))
+        player_manager = ProcessManager()
+        player_manager.start_udhcpd(p2p_interface)
+        d2 = D2(player_manager)
+        while (True):
+            wpacli.set_wps_pin(p2p_interface, Settings.pin, Settings.timeout)
+            d2.run()
+    except PyCastException as ex:
+        if player_manager is not None:
+            player_manager.terminate()
+        logger.exception("Got error: {}".format(ex))
 
 
 if __name__ == '__main__':
