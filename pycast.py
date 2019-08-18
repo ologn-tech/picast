@@ -19,7 +19,6 @@
 
 import errno
 import fcntl
-import logging
 import os
 import re
 import socket
@@ -27,6 +26,15 @@ import subprocess
 import sys
 import tempfile
 from time import sleep
+
+from logging import getLogger, StreamHandler, DEBUG
+
+logger = getLogger(__name__)
+handler = StreamHandler()
+handler.setLevel(DEBUG)
+logger.setLevel(DEBUG)
+logger.addHandler(handler)
+logger.propagate = True
 
 
 class Settings:
@@ -37,9 +45,16 @@ class Settings:
     # 0: HDMI sound output
     # 1: 3.5mm audio jack output
     # 2: alsa
+    device_name = 'pycast'
+    wifi_p2p_group_name = 'persistentpycast'
+    pin = '12345678'
+    timeout = 300
+    myaddress = '192.168.173.1'
+    leaseaddress = '192.168.173.80'
+    netmask = '255.255.255.0'
 
 
-class PlayerManager(object):
+class ProcessManager(object):
     # this class is Borg/Singleton
     _shared_state = {}
 
@@ -50,8 +65,17 @@ class PlayerManager(object):
 
     def __init__(self):
         self.player = None
+        self.dhcpd = None
 
-    def launchplayer(self):
+    def start_udhcpd(self, interface):
+        self.conf_path = tempfile.mkstemp(suffix='.conf')
+        conf = "start  {}\nend {}\ninterface {}\noption subnet {}\noption lease {}\n".format(
+            Settings.leaseaddress, Settings.leaseaddress, interface, Settings.netmask, Settings.timeout)
+        with open(self.conf_path, 'w') as c:
+            c.write(conf)
+        self.dhcpd = subprocess.Popen(["sudo", "udhcpd", self.conf_path])
+
+    def launch_player(self):
         command_list = None
         if Settings.player_select == 1:
             command_list = ['vlc', '--fullscreen', 'rtp://0.0.0.0:1028/wfd1.0/streamid=0']
@@ -63,9 +87,19 @@ class PlayerManager(object):
         self.player = subprocess.Popen(command_list)
 
     def kill(self):
-        if self.player is None:
-            return
-        self.player.kill()
+        if self.player is not None:
+            self.player.kill()
+            self.player = None
+
+    def terminate(self):
+        if self.player is not None:
+            self.player.kill()
+            self.player = None
+        if self.dhcpd is not None:
+            self.dhcpd.kill()
+            os.unlink(self.conf_path)
+            self.dhcpd = None
+
 
 
 class WpaCli:
@@ -161,7 +195,7 @@ class D2:
                 uibcport = uibcport[0]
                 uibcport = uibcport.split('=')
                 uibcport = uibcport[1]
-                logging.info('uibcport:' + uibcport + "\n")
+                logger.info('uibcport:' + uibcport + "\n")
 
     def start_server(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -190,19 +224,19 @@ class D2:
 
     def run(self):
         sock, idrsock, data = self.start_server()
-        logging.debug("---M1--->\n" + data)
+        logger.debug("---M1--->\n" + data)
         s_data = 'RTSP/1.0 200 OK\r\nCSeq: 1\r\n\Public: org.wfa.wfd1.0, SET_PARAMETER, GET_PARAMETER\r\n\r\n'
-        logging.debug("<--------\n" + s_data)
+        logger.debug("<--------\n" + s_data)
         sock.sendall(s_data)
         # M2
         s_data = 'OPTIONS * RTSP/1.0\r\nCSeq: 100\r\nRequire: org.wfa.wfd1.0\r\n\r\n'
-        logging.debug("<---M2---\n" + s_data)
+        logger.debug("<---M2---\n" + s_data)
         sock.sendall(s_data)
         data = (sock.recv(1000))
-        logging.debug("-------->\n" + data)
+        logger.debug("-------->\n" + data)
         # M3
         data = (sock.recv(1000))
-        logging.debug("---M3--->\n" + data)
+        logger.debug("---M3--->\n" + data)
         msg = 'wfd_client_rtp_ports: RTP/AVP/UDP;unicast 1028 0 mode=play\r\n'
         if Settings.player_select == 2:
             msg = msg + 'wfd_audio_codecs: LPCM 00000002 00\r\n'
@@ -221,41 +255,41 @@ class D2:
 
         m3resp = 'RTSP/1.0 200 OK\r\nCSeq: 2\r\n' + 'Content-Type: text/parameters\r\nContent-Length: ' + str(
             len(msg)) + '\r\n\r\n' + msg
-        logging.debug("<--------\n" + m3resp)
+        logger.debug("<--------\n" + m3resp)
         sock.sendall(m3resp)
 
         # M4
         data = (sock.recv(1000))
-        logging.debug("---M4--->\n" + data)
+        logger.debug("---M4--->\n" + data)
         s_data = 'RTSP/1.0 200 OK\r\nCSeq: 3\r\n\r\n'
-        logging.debug("<--------\n" + s_data)
+        logger.debug("<--------\n" + s_data)
         sock.sendall(s_data)
 
         self.uibcstart(sock, data)
 
         # M5
         data = (sock.recv(1000))
-        logging.debug("---M5--->\n" + data)
+        logger.debug("---M5--->\n" + data)
         s_data = 'RTSP/1.0 200 OK\r\nCSeq: 4\r\n\r\n'
-        logging.debug("<--------\n" + s_data)
+        logger.debug("<--------\n" + s_data)
         sock.sendall(s_data)
 
         # M6
         m6req = 'SETUP rtsp://192.168.101.80/wfd1.0/streamid=0 RTSP/1.0\r\n' \
                 + 'CSeq: 101\r\n' \
                 + 'Transport: RTP/AVP/UDP;unicast;client_port=1028\r\n\r\n'
-        logging.debug("<---M6---\n" + m6req)
+        logger.debug("<---M6---\n" + m6req)
         sock.sendall(m6req)
         data = (sock.recv(1000))
-        logging.debug("-------->\n" + data)
+        logger.debug("-------->\n" + data)
 
         paralist = data.split(';')
-        logging.debug(paralist)
+        logger.debug(paralist)
         serverport = [x for x in paralist if 'server_port=' in x]
-        logging.debug(serverport)
+        logger.debug(serverport)
         serverport = serverport[-1]
         serverport = serverport[12:17]
-        logging.debug(serverport)
+        logger.debug(serverport)
 
         paralist = data.split()
         position = paralist.index('Session:') + 1
@@ -265,13 +299,13 @@ class D2:
         m7req = 'PLAY rtsp://192.168.101.80/wfd1.0/streamid=0 RTSP/1.0\r\n' \
                 + 'CSeq: 102\r\n' \
                 + 'Session: ' + str(sessionid) + '\r\n\r\n'
-        logging.debug("<---M7---\n" + m7req)
+        logger.debug("<---M7---\n" + m7req)
         sock.sendall(m7req)
         data = (sock.recv(1000))
-        logging.debug("-------->\n" + data)
-        logging.debug("---- Negotiation successful ----")
+        logger.debug("-------->\n" + data)
+        logger.debug("---- Negotiation successful ----")
 
-        self.player_manager.launchplayer()
+        self.player_manager.launch_player()
 
         fcntl.fcntl(sock, fcntl.F_SETFL, os.O_NONBLOCK)
         fcntl.fcntl(idrsock, fcntl.F_SETFL, os.O_NONBLOCK)
@@ -305,77 +339,66 @@ class D2:
                                  + 'Content-Type: text/parameters\r\n' \
                                  + 'CSeq: ' + str(csnum) + '\r\n\r\n' \
                                  + msg
-                        logging.debug(idrreq)
+                        logger.debug(idrreq)
                         sock.sendall(idrreq)
 
                 else:
                     sys.exit(1)
             else:
-                logging.debug(data)
+                logger.debug(data)
                 watchdog = 0
                 if len(data) == 0 or 'wfd_trigger_method: TEARDOWN' in data:
                     self.player_manager.kill()
                     sleep(1)
                     break
                 elif 'wfd_video_formats' in data:
-                    self.launchplayer(player_select)
+                    self.player_manager.launch_player()
                 messagelist = data.split('\r\n\r\n')
-                logging.debug(messagelist)
+                logger.debug(messagelist)
                 singlemessagelist = [x for x in messagelist if ('GET_PARAMETER' in x or 'SET_PARAMETER' in x)]
-                logging.debug(singlemessagelist)
+                logger.debug(singlemessagelist)
                 for singlemessage in singlemessagelist:
                     entrylist = singlemessage.split('\r')
                     for entry in entrylist:
                         if 'CSeq' in entry:
                             cseq = entry
                     resp = 'RTSP/1.0 200 OK\r' + cseq + '\r\n\r\n';  # cseq contains \n
-                    logging.debug(resp)
+                    logger.debug(resp)
                     sock.sendall(resp)
                 self.uibcstart(sock, data)
         idrsock.close()
         sock.close()
 
 
-class PyCast:
-
-    def start_udhcpd(self, interface):
-        tmpdir = tempfile.mkdtemp()
-        conf = "start  192.168.173.80\nend 192.168.173.80\ninterface {}\noption subnet 255.255.255.0\noption lease 60\n".format(
-            interface)
-        conf_path = os.path.join(tmpdir, "udhcpd.conf")
-        with open(conf_path, 'w') as c:
-            c.write(conf)
-        self.udhcpd_pid = subprocess.Popen(["sudo", "udhcpd", conf_path])
-
-    def start_wifi_p2p(self):
-        wpacli = WpaCli()
-        if wpacli.check_p2p_interface():
-            logging.info("Already on;")
-        else:
-            wpacli.start_p2p_find()
-            wpacli.set_device_name("pycast")
-            wpacli.set_device_type("7-0050F204-1")
-            wpacli.set_p2p_go_ht40()
-            wpacli.wfd_subelem_set("0 00060151022a012c")
-            wpacli.wfd_subelem_set("1 0006000000000000")
-            wpacli.wfd_subelem_set("6 000700000000000000")
-            # fixme: detect existent persisntent group and use it
-            # perentry="$(wpa_cli list_networks | grep "\[DISABLED\]\[P2P-PERSISTENT\]" | tail -1)"
-            # networkid=${perentry%%D*}
-            wpacli.p2p_group_add("persistent")
-
-    def run(self):
-        self.start_wifi_p2p()
-        wpacli = WpaCli()
+def run():
+    wpacli = WpaCli()
+    if wpacli.check_p2p_interface():
+        logger.info("Already on;")
         p2p_interface = wpacli.get_p2p_interface()
-        os.system("sudo ifconfig {} 192.168.173.1".format(p2p_interface))
-        self.start_udhcpd(p2p_interface)
-        player_manager = PlayerManager()
-        d2 = D2(player_manager)
-        while (True):
-            wpacli.set_wps_pin(p2p_interface, "12345678", 300)
-            d2.run()
+    else:
+        wpacli.start_p2p_find()
+        wpacli.set_device_name(Settings.device_name)
+        wpacli.set_device_type("7-0050F204-1")
+        wpacli.set_p2p_go_ht40()
+        wpacli.wfd_subelem_set("0 00060151022a012c")
+        wpacli.wfd_subelem_set("1 0006000000000000")
+        wpacli.wfd_subelem_set("6 000700000000000000")
+        # fixme: detect existent persisntent group and use it
+        # perentry="$(wpa_cli list_networks | grep "\[DISABLED\]\[P2P-PERSISTENT\]" | tail -1)"
+        # networkid=${perentry%%D*}
+        wpacli.p2p_group_add(Settings.wifi_p2p_group_name)
+        sleep(5)
+        p2p_interface = wpacli.get_p2p_interface()
+        os.system("sudo ifconfig {} {}".format(p2p_interface, Settings.myaddress))
+    wpacli = WpaCli()
+    player_manager = ProcessManager()
+    player_manager.start_udhcpd(p2p_interface)
+    d2 = D2(player_manager)
+    while (True):
+        wpacli.set_wps_pin(p2p_interface, Settings.pin, Settings.timeout)
+        d2.run()
+    player_manager.terminate()
 
 
 if __name__ == '__main__':
-    sys.exit(PyCast().run())
+    sys.exit(run())
