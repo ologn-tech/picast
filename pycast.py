@@ -21,12 +21,11 @@ import errno
 import fcntl
 import logging
 import os
+import re
 import socket
 import subprocess
 import sys
 import tempfile
-import threading
-import time
 from time import sleep
 
 
@@ -341,7 +340,6 @@ class D2():
 class PyCast():
 
     def __init__(self):
-        self.wpalib = WpaLib()
         self.player_manager = PlayerManager()
 
     def start_udhcpd(self, interface):
@@ -353,10 +351,10 @@ class PyCast():
         self.udhcpd_pid = subprocess.Popen(["sudo", "udhcpd", conf_path])
 
     def start_wifi_p2p(self):
-        if self.wpalib.check_p2p():
+        wpacli = WpaCli()
+        if wpacli.check_p2p_interface():
             logging.info("Already on;")
         else:
-            wpacli = WpaCli()
             wpacli.start_p2p_find()
             wpacli.set_device_name("pycast")
             wpacli.set_device_type("7-0050F204-1")
