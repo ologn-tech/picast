@@ -17,10 +17,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import psutil
-from twisted.internet.selectreactor import SelectReactor
-from wpa_supplicant.core import WpaSupplicantDriver
-
 import errno
 import fcntl
 import logging
@@ -45,29 +41,23 @@ class Settings:
 
 cur_dir = os.path.dirname(os.path.realpath(__file__))
 
+class PlayerManager(object):
 
-class WpaLib():
+    # this class is Borg/Singleton
+    _shared_state = {}
+
+    def __new__(cls, *p, **k):
+        self = object.__new__(cls, *p, **k)
+        self.__dict__ = cls._shared_state
+        return self
 
     def __init__(self):
-        reactor = SelectReactor()
-        threading.Thread(target=reactor.run, kwargs={'installSignalHandlers': 0}).start()
-        time.sleep(0.1)  # let reactor start
-        driver = WpaSupplicantDriver(reactor)
-        self.supplicant = driver.connect()
+        self.player = None
 
-    def check_p2p(self):
-        it = self.get_p2p_interface()
-        if it is None:
-            return False
-        return True
-
-    def get_p2p_interface(self):
-        interfaces = self.supplicant.get_interfaces()
-        for it in interfaces:
-            ifname = it.get_ifname()
-            if str(ifname).startswith('p2p-wl'):
-                return ifname
-        return None
+    def kill(self):
+        if self.player is None:
+            return
+        self.player.kill()
 
 
 class WpaCli():
@@ -122,13 +112,32 @@ class WpaCli():
         status = self.cmd("-i {} wps_pin any {} {}".format(interface, pin, timeout))
         return status
 
+    def get_interfaces(self):
+        status = self.cmd("interface")
+        val = status.split("\n")
+        selected = None
+        interfaces = []
+        for ln in val:
+            if str(ln).startswith("Selected interface"):
+                selected = re.match("Selected interface \'(([0-9][a-z][A-Z]-)+)\'", ln)
+            elif str(ln) == "Available interfaces:":
+                interfaces.append(str(ln))
+        return selected, interfaces
+
+    def get_p2p_interface(self):
+        sel, interfaces = self.get_interfaces()
+        for it in interfaces:
+            if it.startswith("p2p-wl"):
+                return it
+        return None
+
+    def check_p2p_interface(self):
+        if self.get_p2p_interface() is not None:
+            return True
+        return False
+
 
 class D2():
-
-    def pkill(self, proc_names):
-        for proc in psutil.process_iter():
-            if proc.name() in proc_names:
-                proc.kill()
 
     def uibcstart(self, sock, data):
         messagelist = data.split('\r\n\r\n')
@@ -333,6 +342,7 @@ class PyCast():
 
     def __init__(self):
         self.wpalib = WpaLib()
+        self.player_manager = PlayerManager()
 
     def start_udhcpd(self, interface):
         tmpdir = tempfile.mkdtemp()
