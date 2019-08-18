@@ -401,6 +401,8 @@ def run():
             wpacli.p2p_group_add(Settings.wifi_p2p_group_name)
             sleep(1)
             p2p_interface = wpacli.get_p2p_interface()
+            if p2p_interface is None:
+                raise PyCastException("Can not create P2P Wifi interface.")
             logger.info("Start p2p interface: {}".format(p2p_interface))
             os.system("sudo ifconfig {} {}".format(p2p_interface, Settings.myaddress))
         player_manager = ProcessManager()
