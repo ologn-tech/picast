@@ -38,20 +38,29 @@ class Settings:
     # 1: 3.5mm audio jack output
     # 2: alsa
 
-cur_dir = os.path.dirname(os.path.realpath(__file__))
 
 class PlayerManager(object):
-
     # this class is Borg/Singleton
     _shared_state = {}
 
     def __new__(cls, *p, **k):
-        self = object.__new__(cls, *p, **k)
+        self = object.__new__(cls)
         self.__dict__ = cls._shared_state
         return self
 
     def __init__(self):
         self.player = None
+
+    def launchplayer(self):
+        command_list = None
+        if Settings.player_select == 1:
+            command_list = ['vlc', '--fullscreen', 'rtp://0.0.0.0:1028/wfd1.0/streamid=0']
+        elif Settings.player_select == 2:
+            command_list = ['omxplayer', 'rtp://0.0.0.0:1028', '-n', '-1', '--live']
+        self.run(command_list)
+
+    def run(self, command_list):
+        self.player = subprocess.Popen(command_list)
 
     def kill(self):
         if self.player is None:
@@ -59,7 +68,7 @@ class PlayerManager(object):
         self.player.kill()
 
 
-class WpaCli():
+class WpaCli:
     """
     Wraps the wpa_cli command line interface.
     """
@@ -112,11 +121,10 @@ class WpaCli():
         return status
 
     def get_interfaces(self):
-        status = self.cmd("interface")
-        val = status.split("\n")
         selected = None
         interfaces = []
-        for ln in val:
+        status = self.cmd("interface")
+        for ln in status.splitlines():
             if str(ln).startswith("Selected interface"):
                 selected = re.match("Selected interface \'(([0-9][a-z][A-Z]-)+)\'", ln)
             elif str(ln) == "Available interfaces:":
@@ -136,7 +144,10 @@ class WpaCli():
         return False
 
 
-class D2():
+class D2:
+
+    def __init__(self, playermanager):
+        self.player_manager = playermanager
 
     def uibcstart(self, sock, data):
         messagelist = data.split('\r\n\r\n')
@@ -175,19 +186,9 @@ class D2():
         data = (sock.recv(1000))
         return sock, idrsock, data
 
-    def launchplayer(self, player_select):
-        self.pkill(['vlc', 'omxplayer'])
-        command_list = None
-        if player_select == 1:
-            command_list = ['vlc', '--fullscreen', 'rtp://0.0.0.0:1028/wfd1.0/streamid=0']
-        elif player_select == 2:
-            command_list = ['omxplayer', 'rtp://0.0.0.0:1028', '-n', '-1', '--live']
-        player_pid = subprocess.Popen(command_list)
-
-
     def run(self):
         sock, idrsock, data = self.start_server()
-        logging.debug( "---M1--->\n" + data)
+        logging.debug("---M1--->\n" + data)
         s_data = 'RTSP/1.0 200 OK\r\nCSeq: 1\r\n\Public: org.wfa.wfd1.0, SET_PARAMETER, GET_PARAMETER\r\n\r\n'
         logging.debug("<--------\n" + s_data)
         sock.sendall(s_data)
@@ -268,11 +269,7 @@ class D2():
         logging.debug("-------->\n" + data)
         logging.debug("---- Negotiation successful ----")
 
-        if (os.uname()[-1][:4] != "armv"):
-            player_select = 0
-        else:
-            player_select = Settings.player_select
-        self.launchplayer(player_select)
+        self.player_manager.launchplayer()
 
         fcntl.fcntl(sock, fcntl.F_SETFL, os.O_NONBLOCK)
         fcntl.fcntl(idrsock, fcntl.F_SETFL, os.O_NONBLOCK)
@@ -293,7 +290,7 @@ class D2():
                             sleep(0.01)
                             watchdog = watchdog + 1
                             if watchdog == 70 / 0.01:
-                                self.pkill(['vlc', 'omxplayer'])
+                                self.player_manager.kill()
                                 sleep(1)
                                 break
                         else:
@@ -315,7 +312,7 @@ class D2():
                 logging.debug(data)
                 watchdog = 0
                 if len(data) == 0 or 'wfd_trigger_method: TEARDOWN' in data:
-                    self.pkill(['vlc', 'omxplayer'])
+                    self.player_manager.kill()
                     sleep(1)
                     break
                 elif 'wfd_video_formats' in data:
@@ -337,14 +334,12 @@ class D2():
         sock.close()
 
 
-class PyCast():
-
-    def __init__(self):
-        self.player_manager = PlayerManager()
+class PyCast:
 
     def start_udhcpd(self, interface):
         tmpdir = tempfile.mkdtemp()
-        conf = "start  192.168.173.80\nend 192.168.173.80\ninterface {}\noption subnet 255.255.255.0\noption lease 60\n".format(interface)
+        conf = "start  192.168.173.80\nend 192.168.173.80\ninterface {}\noption subnet 255.255.255.0\noption lease 60\n".format(
+            interface)
         conf_path = os.path.join(tmpdir, "udhcpd.conf")
         with open(conf_path, 'w') as c:
             c.write(conf)
@@ -364,17 +359,18 @@ class PyCast():
             wpacli.wfd_subelem_set("6 000700000000000000")
             # fixme: detect existent persisntent group and use it
             # perentry="$(wpa_cli list_networks | grep "\[DISABLED\]\[P2P-PERSISTENT\]" | tail -1)"
-		    # networkid=${perentry%%D*}
+            # networkid=${perentry%%D*}
             wpacli.p2p_group_add("persistent")
 
     def run(self):
         self.start_wifi_p2p()
-        p2p_interface = self.wpalib.get_p2p_interface()
+        wpacli = WpaCli()
+        p2p_interface = wpacli.get_p2p_interface()
         os.system("sudo ifconfig {} 192.168.173.1".format(p2p_interface))
         self.start_udhcpd(p2p_interface)
-        d2 = D2()
-        wpacli = WpaCli()
-        while(True):
+        player_manager = PlayerManager()
+        d2 = D2(player_manager)
+        while (True):
             wpacli.set_wps_pin(p2p_interface, "12345678", 300)
             d2.run()
 
