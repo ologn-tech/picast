@@ -20,8 +20,11 @@ setup(name='picast',
       author='Hioshi Miura',
       author_email='miurahr@linux.com',
       classifiers=[
-          'Development Status :: 3 - Alpha',
+          'Development Status :: 2 - Pre-Alpha',
+          'Environment :: X11 Applications',
           'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
+          'Operating System :: POSIX :: Linux',
           'Programming Language :: Python',
+          'Topic :: Utilities',
           ],
       )
