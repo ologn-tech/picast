@@ -1,0 +1,31 @@
+dist: xenial
+sudo: false
+language: python
+matrix:
+  include:
+    - python: 3.7
+      env: TOXENV=py37
+    - python: 3.7
+      env: TOXENV=check
+
+install:
+  - pip install tox-travis
+
+script: tox
+
+after_success:
+  - python setup.py sdist bdist_wheel
+
+deploy:
+  - provider: pypi
+    user: miurahr
+    password:
+      secure: "RvqqBWxJ9U6DvA8bK/7WIY5ssp6blA3nb+6CYT44HynLw0IHjVDpKCn6m3Lbs6qCrLSQKFTkDX4h66YYXz44Mcz0xUOmFUDNHRrXtDbx7j5n6cb4hyxd3Bo7RdihX/N4U5C1OvhY2F0TGG8jAKEb9TcXzvQIPZKe56nZDhETLqE4Z1siJVlVX9OHTj95hEllFkJubgx2A/UugTvPkezx0E8EImUrNi0INHdr7HLpcVjv3sQ3Ju8HfwOzXshsKTCoxQ1SjYdG9w8rfawSINfixwOPLcS+4d7XJhsncnzCx2/Q78mAxg2PTi+5U3nlGC6RYjuJ+JQWKmJYfY0hEgIX0w81rQiNhwLRMJ+VDQMPsLuSXYMxkyZa5iC8aArF85iHZTsXsvD5H2f7DstB5yV9JGo8J9j+xgJJN7DJy4dIeL2oTAea9XPrGE+nGFQnhZuDTots6GmAVr7Ex35YxnvvFDPN4PZRjqrTD6+z2Tw8WbtmQosVcW7kuaj7K4XgmwP79QqGrYVc1k96Iw9TVNz8YEIt9fNFOe3Cy6XoXnL7F2u2kHbxePRjF6dLQGfMXor1dC71GMlkoZrJShyD/0bDSlJDg1FJtyZmtaUPVpCy5zstPQ7Y+EAOKtuEDYffuOswLUxmqRoc5x7eG94NaJ77v7+EY71hAYHncqipFQlJ6pk="
+    file_glob: true
+    file:
+    - dist/*.whl
+    skip_cleanup: true
+    skip_existing: true
+    on:
+      repo: miurahr/picast
+      tags: true

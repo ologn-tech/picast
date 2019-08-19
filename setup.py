@@ -13,7 +13,7 @@ def readme():
 
 setup(name='picast',
       version='0.1',
-      description='A simple wireless display receiver for Raspberry Pi',
+      description='A simple wireless display receiver/sink for Raspberry Pi',
       url='http://github.com/miurahr/picast',
       license='GPL3',
       long_description=readme(),
