@@ -10,6 +10,10 @@ Welcome to picast's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   introduction
+   authors
+   changes
+
 
 
 Indices and tables
