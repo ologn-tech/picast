@@ -24,17 +24,20 @@ import os
 import re
 import socket
 import subprocess
-import sys
 import tempfile
-from time import sleep
+import tkinter as Tk
 
 from logging import getLogger, StreamHandler, DEBUG
+from threading import Thread
+from time import sleep
 
+from omxplayer.player import OMXPlayer
+from PIL import Image, ImageTk
 
 class Settings:
-    player_select = 1
-    # 1: vlc
-    # 2: Raspberry-Pi
+    codec = 'LPCM 00000002'
+    # omxplayer 'LPCM 00000002'
+    # vlc       'AAC  00000001'
     sound_output_select = 0
     # 0: HDMI sound output
     # 1: 3.5mm audio jack output
@@ -46,6 +49,43 @@ class Settings:
     myaddress = '192.168.173.1'
     leaseaddress = '192.168.173.80'
     netmask = '255.255.255.0'
+
+
+class Dhcpd(Thread):
+
+    def __init__(self, interface):
+        super().__init__()
+        self.dhcpd = None
+        self.interface = interface
+
+    def run(self):
+        fd, self.conf_path = tempfile.mkstemp(suffix='.conf')
+        conf = "start  {}\nend {}\ninterface {}\noption subnet {}\noption lease {}\n".format(
+            Settings.leaseaddress, Settings.leaseaddress, self.interface, Settings.netmask, Settings.timeout)
+        with open(self.conf_path, 'w') as c:
+            c.write(conf)
+        self.dhcpd = subprocess.Popen(["sudo", "udhcpd", self.conf_path])
+
+    def stop(self):
+        if self.dhcpd is not None:
+            self.dhcpd.terminate()
+            self.conf_path.unlink()
+
+
+class Player(Thread):
+
+    def __init__(self):
+        super().__init__()
+        self.player = None
+
+    def run(self):
+        self.player = OMXPlayer('rtp://0.0.0.0:1028', args=['-n', '-1', '--live'])
+        self.player.fullscreen()
+        self.player.play()
+
+    def stop(self):
+        if self.player is not None:
+            self.player.stop()
 
 
 class WfdParameters:
@@ -130,13 +170,15 @@ class WfdParameters:
                       (11, 848, 480, 60),
     ]
 
+    def get_cea_flag(self, list):
+        for item in list:
+            hres, vres, ref = item.split()
+
+
     def get_video_parameter(self):
-        cea = (2 << 8) | (2 << 15) | (2 << 16)
-        vesa = (2 << 11) | (2 << 13) | (2 << 17) | (2 << 21)
-        if Settings.player_select == 2:
-            msg = 'wfd_audio_codecs: LPCM 00000002 00\r\n'
-        else:
-            msg = 'wfd_audio_codecs: AAC 00000001 00\r\n'
+        cea = (1 << 0) | (1 << 8) | (1 << 15) | (1 << 16)
+        vesa = (1 << 11) | (1 << 13) | (1 << 17) | (1 << 21)
+        msg = 'wfd_audio_codecs: {} 00\r\n'.format(Settings.codec)
         msg = msg + 'wfd_video_formats: 00 00 02 04 {0:08x} {1:08x} {2:08x} 00 0000 0000 00 none none\r\n'.format(
             cea, vesa, 0)
         msg = msg + 'wfd_3d_video_formats: none\r\n' \
@@ -151,54 +193,6 @@ class WfdParameters:
 
 class PiCastException(Exception):
     pass
-
-
-class ProcessManager(object):
-    # this class is Borg/Singleton
-    _shared_state = {}
-
-    def __new__(cls, *p, **k):
-        self = object.__new__(cls)
-        self.__dict__ = cls._shared_state
-        return self
-
-    def __init__(self):
-        self.player = None
-        self.dhcpd = None
-        self.logger = getLogger("PiCast")
-
-    def start_udhcpd(self, interface):
-        fd, self.conf_path = tempfile.mkstemp(suffix='.conf')
-        conf = "start  {}\nend {}\ninterface {}\noption subnet {}\noption lease {}\n".format(
-            Settings.leaseaddress, Settings.leaseaddress, interface, Settings.netmask, Settings.timeout)
-        self.logger.debug(conf)
-        with open(self.conf_path, 'w') as c:
-            c.write(conf)
-        self.dhcpd = subprocess.Popen(["sudo", "udhcpd", self.conf_path])
-
-    def launch_player(self):
-        command_list = None
-        if Settings.player_select == 1:
-            command_list = ['vlc', '--fullscreen', 'rtp://0.0.0.0:1028/wfd1.0/streamid=0']
-        elif Settings.player_select == 2:
-            command_list = ['omxplayer', 'rtp://0.0.0.0:1028', '-n', '-1', '--live']
-        self.logger.debug("Launch player {}".format(command_list[0]))
-        self.player = subprocess.Popen(command_list)
-
-    def kill(self):
-        if self.player is not None:
-            self.player.terminate()
-            self.player = None
-
-    def terminate(self):
-        if self.player is not None:
-            self.player.terminate()
-            self.player = None
-        if self.dhcpd is not None:
-            self.dhcpd.terminate()
-            os.unlink(self.conf_path)
-            self.dhcpd = None
-
 
 class WpaCli:
     """
@@ -289,13 +283,14 @@ class WpaCli:
 
 class PiCast:
 
-    def __init__(self, log=False, loglevel=DEBUG):
+    def __init__(self, player, log=False, loglevel=DEBUG):
         logger = getLogger("PiCast")
         handler = StreamHandler()
         handler.setLevel(DEBUG)
         logger.setLevel(loglevel)
         logger.addHandler(handler)
         logger.propagate = log
+        self.player = player
         self.logger = logger
 
     def wait_connection(self):
@@ -429,7 +424,7 @@ class PiCast:
                             sleep(0.01)
                             watchdog = watchdog + 1
                             if watchdog == 70 / 0.01:
-                                self.player_manager.kill()
+                                self.player.stop()
                                 sleep(1)
                                 break
                         else:
@@ -453,11 +448,11 @@ class PiCast:
                 logger.debug("data: {}".format(data))
                 watchdog = 0
                 if len(data) == 0 or 'wfd_trigger_method: TEARDOWN' in data:
-                    self.player_manager.kill()
+                    self.player.stop()
                     sleep(1)
                     break
                 elif 'wfd_video_formats' in data:
-                    self.player_manager.launch_player()
+                    self.player.play()
                 messagelist = data.splitlines()
                 singlemessagelist = [x for x in messagelist if ('GET_PARAMETER' in x or 'SET_PARAMETER' in x)]
                 logger.debug(singlemessagelist)
@@ -470,60 +465,96 @@ class PiCast:
                             logger.debug("Response: {}".format(resp))
                             sock.sendall(resp.encode("UTF-8"))
                             break
-                self.uibcstart(sock, data)
         idrsock.close()
         sock.close()
 
-    def create_p2p_interface(self):
-        wpacli = WpaCli()
-        wpacli.start_p2p_find()
-        wpacli.set_device_name(Settings.device_name)
-        wpacli.set_device_type("7-0050F204-1")
-        wpacli.set_p2p_go_ht40()
-        wpacli.wfd_subelem_set("0 00060151022a012c")
-        wpacli.wfd_subelem_set("1 0006000000000000")
-        wpacli.wfd_subelem_set("6 000700000000000000")
-        wpacli.p2p_group_add(Settings.wifi_p2p_group_name)
-
-    def set_p2p_interface(self):
-        logger = getLogger("PiCast")
-        wpacli = WpaCli()
-        if wpacli.check_p2p_interface():
-            logger.info("Already set a p2p interface.")
-            p2p_interface = wpacli.get_p2p_interface()
-        else:
-            self.create_p2p_interface()
-            sleep(3)
-            p2p_interface = wpacli.get_p2p_interface()
-            if p2p_interface is None:
-                raise PiCastException("Can not create P2P Wifi interface.")
-            logger.info("Start p2p interface: {}".format(p2p_interface))
-            os.system("sudo ifconfig {} {}".format(p2p_interface, Settings.myaddress))
-        return p2p_interface
 
     def run(self):
-        logger = getLogger("PiCast")
-        self.player_manager = ProcessManager()
-        wpacli = WpaCli()
-        try:
-            wlandev = self.set_p2p_interface()
-            self.player_manager.start_udhcpd(wlandev)
-            while (True):
-                wpacli.set_wps_pin(wlandev, Settings.pin, Settings.timeout)
-                sock, idrsock = self.wait_connection()
-                if sock is None:
-                    continue
-                self.negotiate(sock)
-                self.player_manager.launch_player()
-                fcntl.fcntl(sock, fcntl.F_SETFL, os.O_NONBLOCK)
-                fcntl.fcntl(idrsock, fcntl.F_SETFL, os.O_NONBLOCK)
-                self.start(sock, idrsock)
-                self.player_manager.terminate()
-        except PiCastException as ex:
-            if self.player_manager is not None:
-                self.player_manager.terminate()
-            logger.exception("Got error: {}".format(ex))
+        sock, idrsock = self.wait_connection()
+        if sock is None:
+            return
+        self.negotiate(sock)
+        fcntl.fcntl(sock, fcntl.F_SETFL, os.O_NONBLOCK)
+        fcntl.fcntl(idrsock, fcntl.F_SETFL, os.O_NONBLOCK)
+        self.start(sock, idrsock)
+
+
+def create_p2p_interface():
+    wpacli = WpaCli()
+    wpacli.start_p2p_find()
+    wpacli.set_device_name(Settings.device_name)
+    wpacli.set_device_type("7-0050F204-1")
+    wpacli.set_p2p_go_ht40()
+    wpacli.wfd_subelem_set("0 00060151022a012c")
+    wpacli.wfd_subelem_set("1 0006000000000000")
+    wpacli.wfd_subelem_set("6 000700000000000000")
+    wpacli.p2p_group_add(Settings.wifi_p2p_group_name)
+
+
+def set_p2p_interface():
+    logger = getLogger("PiCast")
+    wpacli = WpaCli()
+    if wpacli.check_p2p_interface():
+        logger.info("Already set a p2p interface.")
+        p2p_interface = wpacli.get_p2p_interface()
+    else:
+        create_p2p_interface()
+        sleep(3)
+        p2p_interface = wpacli.get_p2p_interface()
+        if p2p_interface is None:
+            raise PiCastException("Can not create P2P Wifi interface.")
+        logger.info("Start p2p interface: {}".format(p2p_interface))
+        os.system("sudo ifconfig {} {}".format(p2p_interface, Settings.myaddress))
+    return p2p_interface
+
+
+def Tk_get_root():
+     if not hasattr(Tk_get_root, "root"):
+         Tk_get_root.root = Tk.Tk()
+     return Tk_get_root.root
+
+
+def _quit(self):
+     root = Tk_get_root()
+     root.quit()
+
+
+def start_cast():
+    player = Player()
+    PiCast(player, log=True, loglevel=DEBUG).run()
+
+def show_info():
+    root = Tk_get_root()
+
+
+def show_background_image(pilImage):
+    root = Tk_get_root()
+    w, h = root.winfo_screenwidth(), root.winfo_screenheight()
+    canvas = Tk.Canvas(root)
+    canvas.pack()
+    canvas.configure(background='black')
+    imgWidth, imgHeight = pilImage.size
+    ratio = min(w/imgWidth, h/imgHeight)
+    imgWidth = int(imgWidth*ratio)
+    imgHeight = int(imgHeight*ratio)
+    pilImage = pilImage.resize((imgWidth,imgHeight), Image.ANTIALIAS)
+    image = ImageTk.PhotoImage(pilImage)
+    canvas.create_image(w/2,h/2,image=image)
+    root.update()
 
 
 if __name__ == '__main__':
-    sys.exit(PiCast(log=True, loglevel=DEBUG).run())
+    wpacli = WpaCli()
+    wlandev = set_p2p_interface()
+    dhcpd = Dhcpd(wlandev)
+    dhcpd.start()
+    sleep(0.5)
+    wpacli.set_wps_pin(wlandev, Settings.pin, Settings.timeout)
+    root = Tk_get_root()
+    root.protocol("WM_DELETE_WINDOW", _quit)
+    root.attributes("-fullscreen", True)
+    file=Image.open(os.path.join(os.path.dirname(__file__)), "background.jpg")
+    show_background_image(file)
+    show_info()
+    root.after(100, start_cast)
+    root.mainloop()
