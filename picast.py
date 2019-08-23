@@ -28,11 +28,10 @@ import tempfile
 import tkinter as Tk
 
 from logging import getLogger, StreamHandler, DEBUG
-from threading import Thread
 from time import sleep
 
-from omxplayer.player import OMXPlayer
 from PIL import Image, ImageTk
+
 
 class Settings:
     codec = 'LPCM 00000002'
@@ -51,14 +50,13 @@ class Settings:
     netmask = '255.255.255.0'
 
 
-class Dhcpd(Thread):
+class Dhcpd():
 
     def __init__(self, interface):
-        super().__init__()
         self.dhcpd = None
         self.interface = interface
 
-    def run(self):
+    def start(self):
         fd, self.conf_path = tempfile.mkstemp(suffix='.conf')
         conf = "start  {}\nend {}\ninterface {}\noption subnet {}\noption lease {}\n".format(
             Settings.leaseaddress, Settings.leaseaddress, self.interface, Settings.netmask, Settings.timeout)
@@ -72,20 +70,17 @@ class Dhcpd(Thread):
             self.conf_path.unlink()
 
 
-class Player(Thread):
+class Player():
 
     def __init__(self):
-        super().__init__()
         self.player = None
 
-    def run(self):
-        self.player = OMXPlayer('rtp://0.0.0.0:1028', args=['-n', '-1', '--live'])
-        self.player.fullscreen()
-        self.player.play()
+    def start(self):
+        self.player = subprocess.Popen(["omxplayer", 'rtp://0.0.0.0:1028', '-n -1', '--live', '-hw'])
 
     def stop(self):
         if self.player is not None:
-            self.player.stop()
+            self.player.terminate()
 
 
 class WfdParameters:
@@ -169,10 +164,6 @@ class WfdParameters:
                       (10, 848, 480, 30),
                       (11, 848, 480, 60),
     ]
-
-    def get_cea_flag(self, list):
-        for item in list:
-            hres, vres, ref = item.split()
 
 
     def get_video_parameter(self):
@@ -283,14 +274,14 @@ class WpaCli:
 
 class PiCast:
 
-    def __init__(self, player, log=False, loglevel=DEBUG):
+    def __init__(self, log=False, loglevel=DEBUG):
         logger = getLogger("PiCast")
         handler = StreamHandler()
         handler.setLevel(DEBUG)
         logger.setLevel(loglevel)
         logger.addHandler(handler)
         logger.propagate = log
-        self.player = player
+        self.player = Player()
         self.logger = logger
 
     def wait_connection(self):
@@ -319,16 +310,16 @@ class PiCast:
         self.idrsockport = str(idrsockport)
         return sock, idrsock
 
-    def cast_seq1(self, sock):
-        logger = getLogger("PiCast.cseq1")
+    def cast_seq_m1(self, sock):
+        logger = getLogger("PiCast.m1")
         data = (sock.recv(1000))
         logger.debug("<-{}".format(data))
         s_data = 'RTSP/1.0 200 OK\r\nCSeq: 1\r\n\Public: org.wfa.wfd1.0, SET_PARAMETER, GET_PARAMETER\r\n\r\n'
         logger.debug("->{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
 
-    def cast_seq100(self, sock):
-        logger = getLogger("PiCast.cseq100")
+    def cast_seq_m2(self, sock):
+        logger = getLogger("PiCast.m2")
         s_data = 'OPTIONS * RTSP/1.0\r\nCSeq: 100\r\nRequire: org.wfa.wfd1.0\r\n\r\n'
         logger.debug("<-{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
@@ -336,37 +327,34 @@ class PiCast:
         logger.debug("->{}".format(data))
 
     def cast_seq_m3(self, sock):
-        # RTSP M3 response
-        #
-
-        logger = getLogger("PiCast.cseq2")
+        logger = getLogger("PiCast.m3")
         data = (sock.recv(1000))
         logger.debug("->{}".format(data))
         msg = 'wfd_client_rtp_ports: RTP/AVP/UDP;unicast 1028 0 mode=play\r\n'
         msg = msg + WfdParameters().get_video_parameter()
         m3resp = 'RTSP/1.0 200 OK\r\nCSeq: 2\r\n' + 'Content-Type: text/parameters\r\nContent-Length: ' + str(
             len(msg)) + '\r\n\r\n' + msg
-        logger.debug("<--------{}".format(m3resp))
+        logger.debug("<-{}".format(m3resp))
         sock.sendall(m3resp.encode("UTF-8"))
 
-    def cast_seq3(self, sock):
-        logger = getLogger("PiCast.cseq3")
+    def cast_seq_m4(self, sock):
+        logger = getLogger("PiCast.m4")
         data = (sock.recv(1000)).decode("UTF-8")
         logger.debug("->{}".format(data))
         s_data = 'RTSP/1.0 200 OK\r\nCSeq: 3\r\n\r\n'
         logger.debug("<-{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
 
-    def cast_seq4(self, sock):
-        logger = getLogger("PiCast.cseq4")
+    def cast_seq_m5(self, sock):
+        logger = getLogger("PiCast.m5")
         data = (sock.recv(1000))
         logger.debug("->{}".format(data))
         s_data = 'RTSP/1.0 200 OK\r\nCSeq: 4\r\n\r\n'
         logger.debug("<-{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
 
-    def cast_seq5(self, sock):
-        logger = getLogger("PiCast.cseq5")
+    def cast_seq_m6(self, sock):
+        logger = getLogger("PiCast.m6")
         m6req = 'SETUP rtsp://192.168.101.80/wfd1.0/streamid=0 RTSP/1.0\r\n' \
                 + 'CSeq: 101\r\n' \
                 + 'Transport: RTP/AVP/UDP;unicast;client_port=1028\r\n\r\n'
@@ -385,8 +373,8 @@ class PiCast:
         sessionid = paralist[position]
         return sessionid
 
-    def cast_seq6(self, sock, sessionid):
-        logger = getLogger("PiCast.cseq6")
+    def cast_seq_m7(self, sock, sessionid):
+        logger = getLogger("PiCast.m7")
         m7req = 'PLAY rtsp://192.168.101.80/wfd1.0/streamid=0 RTSP/1.0\r\n' \
                 + 'CSeq: 102\r\n' \
                 + 'Session: ' + str(sessionid) + '\r\n\r\n'
@@ -395,19 +383,21 @@ class PiCast:
         data = (sock.recv(1000))
         logger.debug("->{}".format(data))
 
-    def negotiate(self, sock):
-        logger = getLogger("PiCast.negotiation")
-        self.cast_seq1(sock)
-        self.cast_seq100(sock)
-        self.cast_seq_m3(sock)
-        self.cast_seq3(sock)
-        self.cast_seq4(sock)
-        sessionid = self.cast_seq5(sock)
-        self.cast_seq6(sock, sessionid)
-        logger.debug("---- Negotiation successful ----")
-
-    def start(self, sock, idrsock):
+    def run(self):
         logger = getLogger("PiCast.control")
+        sock, idrsock = self.wait_connection()
+        if sock is None:
+            return
+        self.cast_seq_m1(sock)
+        self.cast_seq_m2(sock)
+        self.cast_seq_m3(sock)
+        self.cast_seq_m4(sock)
+        self.cast_seq_m5(sock)
+        sessionid = self.cast_seq_m6(sock)
+        self.cast_seq_m7(sock, sessionid)
+        logger.debug("---- Negotiation successful ----")
+        fcntl.fcntl(sock, fcntl.F_SETFL, os.O_NONBLOCK)
+        fcntl.fcntl(idrsock, fcntl.F_SETFL, os.O_NONBLOCK)
         csnum = 102
         watchdog = 0
         while True:
@@ -452,7 +442,8 @@ class PiCast:
                     sleep(1)
                     break
                 elif 'wfd_video_formats' in data:
-                    self.player.play()
+                    logger.info('start player')
+                    self.player.start()
                 messagelist = data.splitlines()
                 singlemessagelist = [x for x in messagelist if ('GET_PARAMETER' in x or 'SET_PARAMETER' in x)]
                 logger.debug(singlemessagelist)
@@ -469,43 +460,43 @@ class PiCast:
         sock.close()
 
 
-    def run(self):
-        sock, idrsock = self.wait_connection()
-        if sock is None:
-            return
-        self.negotiate(sock)
-        fcntl.fcntl(sock, fcntl.F_SETFL, os.O_NONBLOCK)
-        fcntl.fcntl(idrsock, fcntl.F_SETFL, os.O_NONBLOCK)
-        self.start(sock, idrsock)
+class WifiP2PServer:
+
+    def __init__(self):
+        wpacli = WpaCli()
+        self.wlandev = self.set_p2p_interface()
+        dhcpd = Dhcpd(self.wlandev)
+        dhcpd.start()
+        sleep(0.5)
+        wpacli.set_wps_pin(self.wlandev, Settings.pin, Settings.timeout)
+
+    def create_p2p_interface(self):
+        wpacli = WpaCli()
+        wpacli.start_p2p_find()
+        wpacli.set_device_name(Settings.device_name)
+        wpacli.set_device_type("7-0050F204-1")
+        wpacli.set_p2p_go_ht40()
+        wpacli.wfd_subelem_set("0 00060151022a012c")
+        wpacli.wfd_subelem_set("1 0006000000000000")
+        wpacli.wfd_subelem_set("6 000700000000000000")
+        wpacli.p2p_group_add(Settings.wifi_p2p_group_name)
 
 
-def create_p2p_interface():
-    wpacli = WpaCli()
-    wpacli.start_p2p_find()
-    wpacli.set_device_name(Settings.device_name)
-    wpacli.set_device_type("7-0050F204-1")
-    wpacli.set_p2p_go_ht40()
-    wpacli.wfd_subelem_set("0 00060151022a012c")
-    wpacli.wfd_subelem_set("1 0006000000000000")
-    wpacli.wfd_subelem_set("6 000700000000000000")
-    wpacli.p2p_group_add(Settings.wifi_p2p_group_name)
-
-
-def set_p2p_interface():
-    logger = getLogger("PiCast")
-    wpacli = WpaCli()
-    if wpacli.check_p2p_interface():
-        logger.info("Already set a p2p interface.")
-        p2p_interface = wpacli.get_p2p_interface()
-    else:
-        create_p2p_interface()
-        sleep(3)
-        p2p_interface = wpacli.get_p2p_interface()
-        if p2p_interface is None:
-            raise PiCastException("Can not create P2P Wifi interface.")
-        logger.info("Start p2p interface: {}".format(p2p_interface))
-        os.system("sudo ifconfig {} {}".format(p2p_interface, Settings.myaddress))
-    return p2p_interface
+    def set_p2p_interface(self):
+        logger = getLogger("PiCast")
+        wpacli = WpaCli()
+        if wpacli.check_p2p_interface():
+            logger.info("Already set a p2p interface.")
+            p2p_interface = wpacli.get_p2p_interface()
+        else:
+            self.create_p2p_interface()
+            sleep(3)
+            p2p_interface = wpacli.get_p2p_interface()
+            if p2p_interface is None:
+                raise PiCastException("Can not create P2P Wifi interface.")
+            logger.info("Start p2p interface: {}".format(p2p_interface))
+            os.system("sudo ifconfig {} {}".format(p2p_interface, Settings.myaddress))
+        return p2p_interface
 
 
 def Tk_get_root():
@@ -520,41 +511,36 @@ def _quit(self):
 
 
 def start_cast():
-    player = Player()
-    PiCast(player, log=True, loglevel=DEBUG).run()
-
-def show_info():
-    root = Tk_get_root()
+    PiCast(log=True, loglevel=DEBUG).run()
 
 
-def show_background_image(pilImage):
+def show_info(pin):
+    global tkImage
     root = Tk_get_root()
     w, h = root.winfo_screenwidth(), root.winfo_screenheight()
-    canvas = Tk.Canvas(root)
+    canvas = Tk.Canvas(root, width=w, height=h)
     canvas.pack()
-    canvas.configure(background='black')
+    canvas.configure(background='white')
+    pilImage = Image.open(os.path.join(os.path.dirname(__file__), "background.jpg"))
     imgWidth, imgHeight = pilImage.size
     ratio = min(w/imgWidth, h/imgHeight)
     imgWidth = int(imgWidth*ratio)
     imgHeight = int(imgHeight*ratio)
-    pilImage = pilImage.resize((imgWidth,imgHeight), Image.ANTIALIAS)
-    image = ImageTk.PhotoImage(pilImage)
-    canvas.create_image(w/2,h/2,image=image)
+    pilImage = pilImage.resize((imgWidth, imgHeight), Image.ANTIALIAS)
+    tkImage = ImageTk.PhotoImage(pilImage)
+    canvas.create_image(w/2, h/2, image=tkImage)
+    canvas.create_text(10, 10, anchor="nw", text="Welcome to PiCast!\nPIN: {}\n".format(pin))
+    canvas.pack()
     root.update()
 
 
 if __name__ == '__main__':
-    wpacli = WpaCli()
-    wlandev = set_p2p_interface()
-    dhcpd = Dhcpd(wlandev)
-    dhcpd.start()
-    sleep(0.5)
-    wpacli.set_wps_pin(wlandev, Settings.pin, Settings.timeout)
+    os.putenv('DISPLAY', ':0')
+    server = WifiP2PServer()
     root = Tk_get_root()
     root.protocol("WM_DELETE_WINDOW", _quit)
     root.attributes("-fullscreen", True)
-    file=Image.open(os.path.join(os.path.dirname(__file__)), "background.jpg")
-    show_background_image(file)
-    show_info()
+    root.update()
+    show_info("12345678")
     root.after(100, start_cast)
     root.mainloop()

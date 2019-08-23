@@ -1,2 +1,2 @@
 omxplayer-wrapper
-PIL
+pillow
