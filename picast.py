@@ -514,22 +514,15 @@ def start_cast():
     PiCast(log=True, loglevel=DEBUG).run()
 
 
-def show_info(pin):
+def show_info():
     global tkImage
     root = Tk_get_root()
     w, h = root.winfo_screenwidth(), root.winfo_screenheight()
     canvas = Tk.Canvas(root, width=w, height=h)
     canvas.pack()
     canvas.configure(background='white')
-    pilImage = Image.open(os.path.join(os.path.dirname(__file__), "background.jpg"))
-    imgWidth, imgHeight = pilImage.size
-    ratio = min(w/imgWidth, h/imgHeight)
-    imgWidth = int(imgWidth*ratio)
-    imgHeight = int(imgHeight*ratio)
-    pilImage = pilImage.resize((imgWidth, imgHeight), Image.ANTIALIAS)
-    tkImage = ImageTk.PhotoImage(pilImage)
+    tkImage = ImageTk.PhotoImage(file=os.path.join(os.path.dirname(__file__), "background.gif"))
     canvas.create_image(w/2, h/2, image=tkImage)
-    canvas.create_text(10, 10, anchor="nw", text="Welcome to PiCast!\nPIN: {}\n".format(pin))
     canvas.pack()
     root.update()
 
@@ -541,6 +534,6 @@ if __name__ == '__main__':
     root.protocol("WM_DELETE_WINDOW", _quit)
     root.attributes("-fullscreen", True)
     root.update()
-    show_info("12345678")
+    show_info()
     root.after(100, start_cast)
     root.mainloop()

@@ -19,7 +19,6 @@ setup(name='picast',
       long_description=readme(),
       author='Hioshi Miura',
       author_email='miurahr@linux.com',
-      requires=["omxplayer-wrapper", "PIL"],
       classifiers=[
           'Development Status :: 2 - Pre-Alpha',
           'Environment :: X11 Applications',
