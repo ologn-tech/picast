@@ -34,13 +34,6 @@ from PIL import Image, ImageTk
 
 
 class Settings:
-    codec = 'LPCM 00000002'
-    # omxplayer 'LPCM 00000002'
-    # vlc       'AAC  00000001'
-    sound_output_select = 0
-    # 0: HDMI sound output
-    # 1: 3.5mm audio jack output
-    # 2: alsa
     device_name = 'picast'
     wifi_p2p_group_name = 'persistent'
     pin = '12345678'
@@ -76,7 +69,7 @@ class Player():
         self.player = None
 
     def start(self):
-        self.player = subprocess.Popen(["omxplayer", 'rtp://0.0.0.0:1028', '-n -1', '--live', '-hw'])
+        self.player = subprocess.Popen(["omxplayer", 'rtp://0.0.0.0:1028', '-n 1', '--live', '-hw'])
 
     def stop(self):
         if self.player is not None:
@@ -167,11 +160,26 @@ class WfdParameters:
 
 
     def get_video_parameter(self):
-        cea = (1 << 0) | (1 << 8) | (1 << 15) | (1 << 16)
-        vesa = (1 << 11) | (1 << 13) | (1 << 17) | (1 << 21)
-        msg = 'wfd_audio_codecs: {} 00\r\n'.format(Settings.codec)
-        msg = msg + 'wfd_video_formats: 00 00 02 04 {0:08x} {1:08x} {2:08x} 00 0000 0000 00 none none\r\n'.format(
-            cea, vesa, 0)
+        cea =  0x0001FFFF
+        vesa = 0x07FFFFFF
+        hh = 0xFFF
+        # audio_codec: LPCM:0x01, AAC:0x02, AC3:0x04
+        # audio_sampling_frequency: 44.1khz:1, 48khz:2
+        # LPCM: 44.1kHz, 16b; 48 kHZ,16b
+	    # AAC: 48 kHz, 16b, 2 channels; 48kHz,16b, 4 channels, 48 kHz,16b,6 channels
+        # AAC 00000001 00  : 2 ch AAC 48kHz
+        msg = 'wfd_audio_codecs: LPCM 00000002 00\r\n'
+        # wfd_video_formats: <native_resolution: 0x20>, <preferred>, <profile>, <level>,
+        #                    <cea>, <vesa>, <hh>, <latency>, <min_slice>, <slice_enc>, <frame skipping support>
+        #                    <max_hres>, <max_vres>
+        # native: index in CEA support.
+        # preferred-display-mode-supported: 0 or 1
+        # profile: Constrained High Profile: 0x02, Constraint Baseline Profile: 0x01
+        # level: H264 level 3.1: 0x01, 3.2: 0x02, 4.0: 0x04,4.1:0x08, 4.2=0x10
+        #   3.2: 720p60,  4.1: FullHD@24, 4.2: FullHD@60
+        #
+        msg = msg + 'wfd_video_formats: 10 00 02 10 {0:08x} {1:08x} {2:08x} 00 0000 0000 00 none none\r\n'.format(
+            cea, vesa, hh)
         msg = msg + 'wfd_3d_video_formats: none\r\n' \
                   + 'wfd_coupled_sink: none\r\n' \
                   + 'wfd_display_edid: none\r\n' \
@@ -281,6 +289,7 @@ class PiCast:
         logger.setLevel(loglevel)
         logger.addHandler(handler)
         logger.propagate = log
+        WifiP2PServer().start()
         self.player = Player()
         self.logger = logger
 
@@ -355,7 +364,7 @@ class PiCast:
 
     def cast_seq_m6(self, sock):
         logger = getLogger("PiCast.m6")
-        m6req = 'SETUP rtsp://192.168.101.80/wfd1.0/streamid=0 RTSP/1.0\r\n' \
+        m6req = 'SETUP rtsp://192.168.173.80/wfd1.0/streamid=0 RTSP/1.0\r\n' \
                 + 'CSeq: 101\r\n' \
                 + 'Transport: RTP/AVP/UDP;unicast;client_port=1028\r\n\r\n'
         logger.debug("<-{}".format(m6req))
@@ -375,7 +384,7 @@ class PiCast:
 
     def cast_seq_m7(self, sock, sessionid):
         logger = getLogger("PiCast.m7")
-        m7req = 'PLAY rtsp://192.168.101.80/wfd1.0/streamid=0 RTSP/1.0\r\n' \
+        m7req = 'PLAY rtsp://192.168.173.80/wfd1.0/streamid=0 RTSP/1.0\r\n' \
                 + 'CSeq: 102\r\n' \
                 + 'Session: ' + str(sessionid) + '\r\n\r\n'
         logger.debug("<-{}".format(m7req))
@@ -462,13 +471,19 @@ class PiCast:
 
 class WifiP2PServer:
 
-    def __init__(self):
+    def start(self):
+        self.set_p2p_interface()
+        self.start_dhcpd()
+        self.start_wps()
+
+    def start_wps(self):
         wpacli = WpaCli()
-        self.wlandev = self.set_p2p_interface()
+        wpacli.set_wps_pin(self.wlandev, Settings.pin, Settings.timeout)
+
+    def start_dhcpd(self):
         dhcpd = Dhcpd(self.wlandev)
         dhcpd.start()
         sleep(0.5)
-        wpacli.set_wps_pin(self.wlandev, Settings.pin, Settings.timeout)
 
     def create_p2p_interface(self):
         wpacli = WpaCli()
@@ -496,7 +511,7 @@ class WifiP2PServer:
                 raise PiCastException("Can not create P2P Wifi interface.")
             logger.info("Start p2p interface: {}".format(p2p_interface))
             os.system("sudo ifconfig {} {}".format(p2p_interface, Settings.myaddress))
-        return p2p_interface
+        self.wlandev = p2p_interface
 
 
 def Tk_get_root():
@@ -510,18 +525,15 @@ def _quit(self):
      root.quit()
 
 
-def start_cast():
-    PiCast(log=True, loglevel=DEBUG).run()
-
-
-def show_info():
-    global tkImage
+def show_info(tkImage):
     root = Tk_get_root()
+    root.protocol("WM_DELETE_WINDOW", _quit)
+    root.attributes("-fullscreen", True)
+    root.update()
     w, h = root.winfo_screenwidth(), root.winfo_screenheight()
     canvas = Tk.Canvas(root, width=w, height=h)
     canvas.pack()
-    canvas.configure(background='white')
-    tkImage = ImageTk.PhotoImage(file=os.path.join(os.path.dirname(__file__), "background.gif"))
+    canvas.configure(background='black')
     canvas.create_image(w/2, h/2, image=tkImage)
     canvas.pack()
     root.update()
@@ -529,11 +541,11 @@ def show_info():
 
 if __name__ == '__main__':
     os.putenv('DISPLAY', ':0')
-    server = WifiP2PServer()
+
+    picast = PiCast(log=True, loglevel=DEBUG)
+    image = ImageTk.PhotoImage(file=os.path.join(os.path.dirname(__file__), "background.gif"))
+    show_info(image)
+
     root = Tk_get_root()
-    root.protocol("WM_DELETE_WINDOW", _quit)
-    root.attributes("-fullscreen", True)
-    root.update()
-    show_info()
-    root.after(100, start_cast)
+    root.after(100, picast.run)
     root.mainloop()
