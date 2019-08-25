@@ -26,5 +26,5 @@ setup(name='picast',
           'Operating System :: POSIX :: Linux',
           'Programming Language :: Python',
           'Topic :: Utilities',
-          ],
+      ],
       )

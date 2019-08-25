@@ -24,21 +24,13 @@ import os
 import re
 import socket
 import subprocess
-import sys
 import tempfile
+import tkinter as Tk
+from logging import DEBUG, StreamHandler, getLogger
 from time import sleep
-
-from logging import getLogger, StreamHandler, DEBUG
 
 
 class Settings:
-    player_select = 1
-    # 1: vlc
-    # 2: Raspberry-Pi
-    sound_output_select = 0
-    # 0: HDMI sound output
-    # 1: 3.5mm audio jack output
-    # 2: alsa
     device_name = 'picast'
     wifi_p2p_group_name = 'persistent'
     pin = '12345678'
@@ -46,6 +38,39 @@ class Settings:
     myaddress = '192.168.173.1'
     leaseaddress = '192.168.173.80'
     netmask = '255.255.255.0'
+
+
+class Dhcpd():
+
+    def __init__(self, interface):
+        self.dhcpd = None
+        self.interface = interface
+
+    def start(self):
+        fd, self.conf_path = tempfile.mkstemp(suffix='.conf')
+        conf = "start  {}\nend {}\ninterface {}\noption subnet {}\noption lease {}\n".format(
+            Settings.leaseaddress, Settings.leaseaddress, self.interface, Settings.netmask, Settings.timeout)
+        with open(self.conf_path, 'w') as c:
+            c.write(conf)
+        self.dhcpd = subprocess.Popen(["sudo", "udhcpd", self.conf_path])
+
+    def stop(self):
+        if self.dhcpd is not None:
+            self.dhcpd.terminate()
+            self.conf_path.unlink()
+
+
+class Player():
+
+    def __init__(self):
+        self.player = None
+
+    def start(self):
+        self.player = subprocess.Popen(["omxplayer", 'rtp://0.0.0.0:1028', '-n 1', '--live', '-hw'])
+
+    def stop(self):
+        if self.player is not None:
+            self.player.terminate()
 
 
 class WfdParameters:
@@ -116,29 +141,42 @@ class WfdParameters:
         (32, 2560, 1600, 60),  # p60
     ]
 
-    resolutions_hh = [(0, 800, 400, 30),
-                      (1, 800, 480, 60),
-                      (2, 854, 480, 30),
-                      (3, 854, 480, 60),
-                      (4, 864, 480, 30),
-                      (5, 864, 480, 60),
-                      (6, 640, 360, 30),
-                      (7, 640, 360, 60),
-                      (8, 960, 540, 30),
-                      (9, 960, 540, 60),
-                      (10, 848, 480, 30),
-                      (11, 848, 480, 60),
+    resolutions_hh = [
+        (0, 800, 400, 30),
+        (1, 800, 480, 60),
+        (2, 854, 480, 30),
+        (3, 854, 480, 60),
+        (4, 864, 480, 30),
+        (5, 864, 480, 60),
+        (6, 640, 360, 30),
+        (7, 640, 360, 60),
+        (8, 960, 540, 30),
+        (9, 960, 540, 60),
+        (10, 848, 480, 30),
+        (11, 848, 480, 60),
     ]
 
     def get_video_parameter(self):
-        cea = (2 << 8) | (2 << 15) | (2 << 16)
-        vesa = (2 << 11) | (2 << 13) | (2 << 17) | (2 << 21)
-        if Settings.player_select == 2:
-            msg = 'wfd_audio_codecs: LPCM 00000002 00\r\n'
-        else:
-            msg = 'wfd_audio_codecs: AAC 00000001 00\r\n'
-        msg = msg + 'wfd_video_formats: 00 00 02 04 {0:08x} {1:08x} {2:08x} 00 0000 0000 00 none none\r\n'.format(
-            cea, vesa, 0)
+        cea = 0x0001FFFF
+        vesa = 0x07FFFFFF
+        hh = 0xFFF
+        # audio_codec: LPCM:0x01, AAC:0x02, AC3:0x04
+        # audio_sampling_frequency: 44.1khz:1, 48khz:2
+        # LPCM: 44.1kHz, 16b; 48 kHZ,16b
+        # AAC: 48 kHz, 16b, 2 channels; 48kHz,16b, 4 channels, 48 kHz,16b,6 channels
+        # AAC 00000001 00  : 2 ch AAC 48kHz
+        msg = 'wfd_audio_codecs: LPCM 00000002 00\r\n'
+        # wfd_video_formats: <native_resolution: 0x20>, <preferred>, <profile>, <level>,
+        #                    <cea>, <vesa>, <hh>, <latency>, <min_slice>, <slice_enc>, <frame skipping support>
+        #                    <max_hres>, <max_vres>
+        # native: index in CEA support.
+        # preferred-display-mode-supported: 0 or 1
+        # profile: Constrained High Profile: 0x02, Constraint Baseline Profile: 0x01
+        # level: H264 level 3.1: 0x01, 3.2: 0x02, 4.0: 0x04,4.1:0x08, 4.2=0x10
+        #   3.2: 720p60,  4.1: FullHD@24, 4.2: FullHD@60
+        #
+        msg = msg + 'wfd_video_formats: 10 00 02 10 {0:08x} {1:08x} {2:08x} 00 0000 0000 00 none none\r\n'.format(
+            cea, vesa, hh)
         msg = msg + 'wfd_3d_video_formats: none\r\n' \
                   + 'wfd_coupled_sink: none\r\n' \
                   + 'wfd_display_edid: none\r\n' \
@@ -151,53 +189,6 @@ class WfdParameters:
 
 class PiCastException(Exception):
     pass
-
-
-class ProcessManager(object):
-    # this class is Borg/Singleton
-    _shared_state = {}
-
-    def __new__(cls, *p, **k):
-        self = object.__new__(cls)
-        self.__dict__ = cls._shared_state
-        return self
-
-    def __init__(self):
-        self.player = None
-        self.dhcpd = None
-        self.logger = getLogger("PiCast")
-
-    def start_udhcpd(self, interface):
-        fd, self.conf_path = tempfile.mkstemp(suffix='.conf')
-        conf = "start  {}\nend {}\ninterface {}\noption subnet {}\noption lease {}\n".format(
-            Settings.leaseaddress, Settings.leaseaddress, interface, Settings.netmask, Settings.timeout)
-        self.logger.debug(conf)
-        with open(self.conf_path, 'w') as c:
-            c.write(conf)
-        self.dhcpd = subprocess.Popen(["sudo", "udhcpd", self.conf_path])
-
-    def launch_player(self):
-        command_list = None
-        if Settings.player_select == 1:
-            command_list = ['vlc', '--fullscreen', 'rtp://0.0.0.0:1028/wfd1.0/streamid=0']
-        elif Settings.player_select == 2:
-            command_list = ['omxplayer', 'rtp://0.0.0.0:1028', '-n', '-1', '--live']
-        self.logger.debug("Launch player {}".format(command_list[0]))
-        self.player = subprocess.Popen(command_list)
-
-    def kill(self):
-        if self.player is not None:
-            self.player.terminate()
-            self.player = None
-
-    def terminate(self):
-        if self.player is not None:
-            self.player.terminate()
-            self.player = None
-        if self.dhcpd is not None:
-            self.dhcpd.terminate()
-            os.unlink(self.conf_path)
-            self.dhcpd = None
 
 
 class WpaCli:
@@ -296,6 +287,8 @@ class PiCast:
         logger.setLevel(loglevel)
         logger.addHandler(handler)
         logger.propagate = log
+        WifiP2PServer().start()
+        self.player = Player()
         self.logger = logger
 
     def wait_connection(self):
@@ -324,16 +317,16 @@ class PiCast:
         self.idrsockport = str(idrsockport)
         return sock, idrsock
 
-    def cast_seq1(self, sock):
-        logger = getLogger("PiCast.cseq1")
+    def cast_seq_m1(self, sock):
+        logger = getLogger("PiCast.m1")
         data = (sock.recv(1000))
         logger.debug("<-{}".format(data))
-        s_data = 'RTSP/1.0 200 OK\r\nCSeq: 1\r\n\Public: org.wfa.wfd1.0, SET_PARAMETER, GET_PARAMETER\r\n\r\n'
+        s_data = 'RTSP/1.0 200 OK\r\nCSeq: 1\r\nPublic: org.wfa.wfd1.0, SET_PARAMETER, GET_PARAMETER\r\n\r\n'
         logger.debug("->{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
 
-    def cast_seq100(self, sock):
-        logger = getLogger("PiCast.cseq100")
+    def cast_seq_m2(self, sock):
+        logger = getLogger("PiCast.m2")
         s_data = 'OPTIONS * RTSP/1.0\r\nCSeq: 100\r\nRequire: org.wfa.wfd1.0\r\n\r\n'
         logger.debug("<-{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
@@ -341,38 +334,35 @@ class PiCast:
         logger.debug("->{}".format(data))
 
     def cast_seq_m3(self, sock):
-        # RTSP M3 response
-        #
-
-        logger = getLogger("PiCast.cseq2")
+        logger = getLogger("PiCast.m3")
         data = (sock.recv(1000))
         logger.debug("->{}".format(data))
         msg = 'wfd_client_rtp_ports: RTP/AVP/UDP;unicast 1028 0 mode=play\r\n'
         msg = msg + WfdParameters().get_video_parameter()
         m3resp = 'RTSP/1.0 200 OK\r\nCSeq: 2\r\n' + 'Content-Type: text/parameters\r\nContent-Length: ' + str(
             len(msg)) + '\r\n\r\n' + msg
-        logger.debug("<--------{}".format(m3resp))
+        logger.debug("<-{}".format(m3resp))
         sock.sendall(m3resp.encode("UTF-8"))
 
-    def cast_seq3(self, sock):
-        logger = getLogger("PiCast.cseq3")
+    def cast_seq_m4(self, sock):
+        logger = getLogger("PiCast.m4")
         data = (sock.recv(1000)).decode("UTF-8")
         logger.debug("->{}".format(data))
         s_data = 'RTSP/1.0 200 OK\r\nCSeq: 3\r\n\r\n'
         logger.debug("<-{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
 
-    def cast_seq4(self, sock):
-        logger = getLogger("PiCast.cseq4")
+    def cast_seq_m5(self, sock):
+        logger = getLogger("PiCast.m5")
         data = (sock.recv(1000))
         logger.debug("->{}".format(data))
         s_data = 'RTSP/1.0 200 OK\r\nCSeq: 4\r\n\r\n'
         logger.debug("<-{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
 
-    def cast_seq5(self, sock):
-        logger = getLogger("PiCast.cseq5")
-        m6req = 'SETUP rtsp://192.168.101.80/wfd1.0/streamid=0 RTSP/1.0\r\n' \
+    def cast_seq_m6(self, sock):
+        logger = getLogger("PiCast.m6")
+        m6req = 'SETUP rtsp://192.168.173.80/wfd1.0/streamid=0 RTSP/1.0\r\n' \
                 + 'CSeq: 101\r\n' \
                 + 'Transport: RTP/AVP/UDP;unicast;client_port=1028\r\n\r\n'
         logger.debug("<-{}".format(m6req))
@@ -390,9 +380,9 @@ class PiCast:
         sessionid = paralist[position]
         return sessionid
 
-    def cast_seq6(self, sock, sessionid):
-        logger = getLogger("PiCast.cseq6")
-        m7req = 'PLAY rtsp://192.168.101.80/wfd1.0/streamid=0 RTSP/1.0\r\n' \
+    def cast_seq_m7(self, sock, sessionid):
+        logger = getLogger("PiCast.m7")
+        m7req = 'PLAY rtsp://192.168.173.80/wfd1.0/streamid=0 RTSP/1.0\r\n' \
                 + 'CSeq: 102\r\n' \
                 + 'Session: ' + str(sessionid) + '\r\n\r\n'
         logger.debug("<-{}".format(m7req))
@@ -400,19 +390,21 @@ class PiCast:
         data = (sock.recv(1000))
         logger.debug("->{}".format(data))
 
-    def negotiate(self, sock):
-        logger = getLogger("PiCast.negotiation")
-        self.cast_seq1(sock)
-        self.cast_seq100(sock)
-        self.cast_seq_m3(sock)
-        self.cast_seq3(sock)
-        self.cast_seq4(sock)
-        sessionid = self.cast_seq5(sock)
-        self.cast_seq6(sock, sessionid)
-        logger.debug("---- Negotiation successful ----")
-
-    def start(self, sock, idrsock):
+    def run(self):
         logger = getLogger("PiCast.control")
+        sock, idrsock = self.wait_connection()
+        if sock is None:
+            return
+        self.cast_seq_m1(sock)
+        self.cast_seq_m2(sock)
+        self.cast_seq_m3(sock)
+        self.cast_seq_m4(sock)
+        self.cast_seq_m5(sock)
+        sessionid = self.cast_seq_m6(sock)
+        self.cast_seq_m7(sock, sessionid)
+        logger.debug("---- Negotiation successful ----")
+        fcntl.fcntl(sock, fcntl.F_SETFL, os.O_NONBLOCK)
+        fcntl.fcntl(idrsock, fcntl.F_SETFL, os.O_NONBLOCK)
         csnum = 102
         watchdog = 0
         while True:
@@ -429,7 +421,7 @@ class PiCast:
                             sleep(0.01)
                             watchdog = watchdog + 1
                             if watchdog == 70 / 0.01:
-                                self.player_manager.kill()
+                                self.player.stop()
                                 sleep(1)
                                 break
                         else:
@@ -453,11 +445,12 @@ class PiCast:
                 logger.debug("data: {}".format(data))
                 watchdog = 0
                 if len(data) == 0 or 'wfd_trigger_method: TEARDOWN' in data:
-                    self.player_manager.kill()
+                    self.player.stop()
                     sleep(1)
                     break
                 elif 'wfd_video_formats' in data:
-                    self.player_manager.launch_player()
+                    logger.info('start player')
+                    self.player.start()
                 messagelist = data.splitlines()
                 singlemessagelist = [x for x in messagelist if ('GET_PARAMETER' in x or 'SET_PARAMETER' in x)]
                 logger.debug(singlemessagelist)
@@ -470,9 +463,25 @@ class PiCast:
                             logger.debug("Response: {}".format(resp))
                             sock.sendall(resp.encode("UTF-8"))
                             break
-                self.uibcstart(sock, data)
         idrsock.close()
         sock.close()
+
+
+class WifiP2PServer:
+
+    def start(self):
+        self.set_p2p_interface()
+        self.start_dhcpd()
+        self.start_wps()
+
+    def start_wps(self):
+        wpacli = WpaCli()
+        wpacli.set_wps_pin(self.wlandev, Settings.pin, Settings.timeout)
+
+    def start_dhcpd(self):
+        dhcpd = Dhcpd(self.wlandev)
+        dhcpd.start()
+        sleep(0.5)
 
     def create_p2p_interface(self):
         wpacli = WpaCli()
@@ -499,31 +508,47 @@ class PiCast:
                 raise PiCastException("Can not create P2P Wifi interface.")
             logger.info("Start p2p interface: {}".format(p2p_interface))
             os.system("sudo ifconfig {} {}".format(p2p_interface, Settings.myaddress))
-        return p2p_interface
+        self.wlandev = p2p_interface
 
-    def run(self):
-        logger = getLogger("PiCast")
-        self.player_manager = ProcessManager()
-        wpacli = WpaCli()
-        try:
-            wlandev = self.set_p2p_interface()
-            self.player_manager.start_udhcpd(wlandev)
-            while (True):
-                wpacli.set_wps_pin(wlandev, Settings.pin, Settings.timeout)
-                sock, idrsock = self.wait_connection()
-                if sock is None:
-                    continue
-                self.negotiate(sock)
-                self.player_manager.launch_player()
-                fcntl.fcntl(sock, fcntl.F_SETFL, os.O_NONBLOCK)
-                fcntl.fcntl(idrsock, fcntl.F_SETFL, os.O_NONBLOCK)
-                self.start(sock, idrsock)
-                self.player_manager.terminate()
-        except PiCastException as ex:
-            if self.player_manager is not None:
-                self.player_manager.terminate()
-            logger.exception("Got error: {}".format(ex))
+
+def Tk_get_root():
+    if not hasattr(Tk_get_root, "root"):
+        Tk_get_root.root = Tk.Tk()
+    return Tk_get_root.root
+
+
+def _quit(self):
+    root = Tk_get_root()
+    root.quit()
+
+
+def show_info():
+    root = Tk_get_root()
+    root.protocol("WM_DELETE_WINDOW", _quit)
+    root.attributes("-fullscreen", True)
+    root.update()
+    w, h = root.winfo_screenwidth(), root.winfo_screenheight()
+    canvas = Tk.Canvas(root, width=w, height=h)
+    canvas.pack()
+    canvas.configure(background='black')
+    tkImage = os.path.join(os.path.dirname(__file__), "background.gif")
+    canvas.create_image(w / 2, h / 2, image=tkImage)
+    canvas.pack()
+    root.update()
+
+
+def get_display_resolutions():
+    output = subprocess.Popen("xrandr | egrep -oh '[0-9]+x[0-9]+'", shell=True, stdout=subprocess.PIPE).communicate()[0]
+    resolutions = output.split()
+    return resolutions
 
 
 if __name__ == '__main__':
-    sys.exit(PiCast(log=True, loglevel=DEBUG).run())
+    os.putenv('DISPLAY', ':0')
+
+    picast = PiCast(log=True, loglevel=DEBUG)
+    show_info()
+
+    root = Tk_get_root()
+    root.after(100, picast.run)
+    root.mainloop()

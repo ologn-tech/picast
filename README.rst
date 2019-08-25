@@ -18,8 +18,11 @@ Run apt install command on Rasbpian / Raspberry Pi Zero W/WH, or Raspberry Pi 3
 
 .. code-block::
 
-    $ sudo apt install net-tools python3 udhcpd omxplayer vlc
-    $ sudo apt install --no-install-recommends lxde pulseaudio
+    $ sudo apt install net-tools python3 udhcpd omxplayer
+    $ sudo apt install --no-install-recommends lxde
+    $ pip install -r requirements.txt
+    $ cp picast.py /usr/local/bin/picast
+    $ chmod +x /usr/local/bin/picast
 
 Note: udhcpd is a DHCP server for Ubuntu and Debian.
 
@@ -29,7 +32,7 @@ Usage
 
 .. code-block::
 
-    $ python3 picast.py
+    $ picast
 
 Then, search for the wireless display named "picast" on the source device you want to cast.
 Use "12345678" for a WPS PIN number.
@@ -37,6 +40,18 @@ It is recommended to initiate the termination of the receiver on the source side
 
 After Pi connects to the source, it has an IP address of ``192.168.173.1``
 and this connection can be reused for other purposes like SSH.
+
+
+Autostart
+---------
+
+Edit /home/pi/.config/lxsessions/LXDE/autostart
+
+.. code-block::
+
+    @xscreensaver
+    @picast
+
 
 Known issues
 ------------
