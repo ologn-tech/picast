@@ -26,7 +26,6 @@ import socket
 import subprocess
 import tempfile
 import tkinter as Tk
-
 from logging import DEBUG, StreamHandler, getLogger
 from time import sleep
 
