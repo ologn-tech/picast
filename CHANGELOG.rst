@@ -13,9 +13,14 @@ Current changes
 
 Added
 -----
+- Add background image and SSID/PIN information display.
+- Add flake8 test.
+- Add more tests.
 
 Changed
 -------
+- Use oxmplayer for rtp player.
+- wfd_video_formats: update native-resolution.
 
 Fixed
 -----
