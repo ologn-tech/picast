@@ -539,6 +539,12 @@ def show_info(tkImage):
     root.update()
 
 
+def get_display_resolutions():
+    output = subprocess.Popen("xrandr | egrep -oh '[0-9]+x[0-9]+'", shell=True, stdout=subprocess.PIPE).communicate()[0]
+    resolutions = output.split()
+    return resolutions
+
+
 if __name__ == '__main__':
     os.putenv('DISPLAY', ':0')
 
