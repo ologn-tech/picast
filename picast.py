@@ -30,8 +30,6 @@ import tkinter as Tk
 from logging import getLogger, StreamHandler, DEBUG
 from time import sleep
 
-from PIL import Image, ImageTk
-
 
 class Settings:
     device_name = 'picast'
@@ -144,29 +142,29 @@ class WfdParameters:
         (32, 2560, 1600, 60),  # p60
     ]
 
-    resolutions_hh = [(0, 800, 400, 30),
-                      (1, 800, 480, 60),
-                      (2, 854, 480, 30),
-                      (3, 854, 480, 60),
-                      (4, 864, 480, 30),
-                      (5, 864, 480, 60),
-                      (6, 640, 360, 30),
-                      (7, 640, 360, 60),
-                      (8, 960, 540, 30),
-                      (9, 960, 540, 60),
-                      (10, 848, 480, 30),
-                      (11, 848, 480, 60),
+    resolutions_hh = [
+        (0, 800, 400, 30),
+        (1, 800, 480, 60),
+        (2, 854, 480, 30),
+        (3, 854, 480, 60),
+        (4, 864, 480, 30),
+        (5, 864, 480, 60),
+        (6, 640, 360, 30),
+        (7, 640, 360, 60),
+        (8, 960, 540, 30),
+        (9, 960, 540, 60),
+        (10, 848, 480, 30),
+        (11, 848, 480, 60),
     ]
 
-
     def get_video_parameter(self):
-        cea =  0x0001FFFF
+        cea = 0x0001FFFF
         vesa = 0x07FFFFFF
         hh = 0xFFF
         # audio_codec: LPCM:0x01, AAC:0x02, AC3:0x04
         # audio_sampling_frequency: 44.1khz:1, 48khz:2
         # LPCM: 44.1kHz, 16b; 48 kHZ,16b
-	    # AAC: 48 kHz, 16b, 2 channels; 48kHz,16b, 4 channels, 48 kHz,16b,6 channels
+        # AAC: 48 kHz, 16b, 2 channels; 48kHz,16b, 4 channels, 48 kHz,16b,6 channels
         # AAC 00000001 00  : 2 ch AAC 48kHz
         msg = 'wfd_audio_codecs: LPCM 00000002 00\r\n'
         # wfd_video_formats: <native_resolution: 0x20>, <preferred>, <profile>, <level>,
@@ -192,6 +190,7 @@ class WfdParameters:
 
 class PiCastException(Exception):
     pass
+
 
 class WpaCli:
     """
@@ -323,7 +322,7 @@ class PiCast:
         logger = getLogger("PiCast.m1")
         data = (sock.recv(1000))
         logger.debug("<-{}".format(data))
-        s_data = 'RTSP/1.0 200 OK\r\nCSeq: 1\r\n\Public: org.wfa.wfd1.0, SET_PARAMETER, GET_PARAMETER\r\n\r\n'
+        s_data = 'RTSP/1.0 200 OK\r\nCSeq: 1\r\nPublic: org.wfa.wfd1.0, SET_PARAMETER, GET_PARAMETER\r\n\r\n'
         logger.debug("->{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
 
@@ -496,7 +495,6 @@ class WifiP2PServer:
         wpacli.wfd_subelem_set("6 000700000000000000")
         wpacli.p2p_group_add(Settings.wifi_p2p_group_name)
 
-
     def set_p2p_interface(self):
         logger = getLogger("PiCast")
         wpacli = WpaCli()
@@ -515,17 +513,17 @@ class WifiP2PServer:
 
 
 def Tk_get_root():
-     if not hasattr(Tk_get_root, "root"):
-         Tk_get_root.root = Tk.Tk()
-     return Tk_get_root.root
+    if not hasattr(Tk_get_root, "root"):
+        Tk_get_root.root = Tk.Tk()
+    return Tk_get_root.root
 
 
 def _quit(self):
-     root = Tk_get_root()
-     root.quit()
+    root = Tk_get_root()
+    root.quit()
 
 
-def show_info(tkImage):
+def show_info():
     root = Tk_get_root()
     root.protocol("WM_DELETE_WINDOW", _quit)
     root.attributes("-fullscreen", True)
@@ -534,7 +532,8 @@ def show_info(tkImage):
     canvas = Tk.Canvas(root, width=w, height=h)
     canvas.pack()
     canvas.configure(background='black')
-    canvas.create_image(w/2, h/2, image=tkImage)
+    tkImage = os.path.join(os.path.dirname(__file__), "background.gif")
+    canvas.create_image(w / 2, h / 2, image=tkImage)
     canvas.pack()
     root.update()
 
@@ -549,8 +548,7 @@ if __name__ == '__main__':
     os.putenv('DISPLAY', ':0')
 
     picast = PiCast(log=True, loglevel=DEBUG)
-    image = ImageTk.PhotoImage(file=os.path.join(os.path.dirname(__file__), "background.gif"))
-    show_info(image)
+    show_info()
 
     root = Tk_get_root()
     root.after(100, picast.run)
