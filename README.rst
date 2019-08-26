@@ -37,6 +37,7 @@ Usage
 Then, search for the wireless display named "picast" on the source device you want to cast.
 Use "12345678" for a WPS PIN number.
 It is recommended to initiate the termination of the receiver on the source side.
+    $ pip install -r requirements.txt
 
 After Pi connects to the source, it has an IP address of ``192.168.173.1``
 and this connection can be reused for other purposes like SSH.
