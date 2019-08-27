@@ -66,6 +66,8 @@ class Player():
         self.player = None
 
     def start(self):
+        logger = getLogger("PiCast:Play")
+        logger.info("Start omxplayer")
         self.player = subprocess.Popen(["omxplayer", 'rtp://0.0.0.0:1028', '-n 1', '--live', '-hw'])
 
     def stop(self):
@@ -531,10 +533,11 @@ def show_info():
     canvas = Tk.Canvas(root, width=w, height=h)
     canvas.pack()
     canvas.configure(background='linen')
+    global tkImage
     tkImage = Tk.PhotoImage(file=os.path.join(os.path.dirname(os.path.abspath(__file__)), "pctablet.pgm"))
-    canvas.create_image(120,  500, image=tkImage)
+    canvas.create_image(500,  200, image=tkImage)
     canvas.create_text(80, 200, text="Welcome to 'picast'!")
-    canvas.create_text(80, 300, text="PIN: 123456")
+    canvas.create_text(80, 300, text="PIN: 12345678")
     canvas.pack()
     root.update()
 

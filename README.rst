@@ -18,7 +18,7 @@ Run apt install command on Rasbpian / Raspberry Pi Zero W/WH, or Raspberry Pi 3
 
 .. code-block::
 
-    $ sudo apt install net-tools python3 udhcpd omxplayer
+    $ sudo apt install net-tools python3 udhcpd omxplayse
     $ sudo apt install --no-install-recommends lxde
     $ pip install -r requirements.txt
     $ cp picast.py /usr/local/bin/picast
@@ -26,6 +26,12 @@ Run apt install command on Rasbpian / Raspberry Pi Zero W/WH, or Raspberry Pi 3
 
 Note: udhcpd is a DHCP server for Ubuntu and Debian.
 
+
+Prepare
+-------
+
+Increase GPU memory for decoding fullHD video stream.
+add `gpu_mem=128`  to `/boot/config.txt`
 
 Usage
 -----
