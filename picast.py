@@ -178,7 +178,7 @@ class WfdParameters:
         # level: H264 level 3.1: 0x01, 3.2: 0x02, 4.0: 0x04,4.1:0x08, 4.2=0x10
         #   3.2: 720p60,  4.1: FullHD@24, 4.2: FullHD@60
         #
-        msg = msg + 'wfd_video_formats: 10 00 02 10 {0:08x} {1:08x} {2:08x} 00 0000 0000 00 none none\r\n'.format(
+        msg = msg + 'wfd_video_formats: 10 00 02 10 {0:08X} {1:08X} {2:08X} 00 0000 0000 00 none none\r\n'.format(
             cea, vesa, hh)
         msg = msg + 'wfd_3d_video_formats: none\r\n' \
                   + 'wfd_coupled_sink: none\r\n' \
