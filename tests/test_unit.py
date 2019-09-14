@@ -5,7 +5,7 @@ import pytest
 @pytest.mark.unit
 def test_get_video_parameter():
     expected = "wfd_audio_codecs: AAC 00000001 00, LPCM 00000002 00\r\n" \
-               "wfd_video_formats: 08 00 03 10 0001FFFF 07FFFFFF 00000FFF 00 0000 0000 00 none none\r\n" \
+               "wfd_video_formats: 08 00 03 10 0001FFFF 0FFFFFFF 00000000 00 0000 0000 00 none none\r\n" \
                "wfd_3d_video_formats: none\r\nwfd_coupled_sink: none\r\nwfd_display_edid: none\r\n" \
                "wfd_connector_type: 05\r\nwfd_uibc_capability: none\r\nwfd_standby_resume_capability: none\r\n" \
                "wfd_content_protection: none\r\n"
@@ -81,3 +81,8 @@ def test_wpacli_set_p2p_go_ht40(monkeypatch):
     monkeypatch.setattr(picast.WpaCli, "cmd", mockreturn)
     wpacli = picast.WpaCli()
     wpacli.set_p2p_go_ht40()
+
+@pytest.mark.unit
+def test_devinfo():
+    p2p = picast.WifiP2PServer()
+    assert '00060151022a012c' == p2p.wfd_devinfo()
