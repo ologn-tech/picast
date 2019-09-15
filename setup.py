@@ -19,7 +19,7 @@ setup(name='picast',
       long_description=readme(),
       author='Hioshi Miura',
       author_email='miurahr@linux.com',
-      requires=['PyGObject'],
+      requires=['PyGObject', 'zeroconf'],
       classifiers=[
           'Development Status :: 2 - Pre-Alpha',
           'Environment :: X11 Applications',

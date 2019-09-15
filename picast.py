@@ -17,7 +17,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-
+import binascii
 import errno
 import fcntl
 import os
@@ -26,6 +26,7 @@ import socket
 import subprocess
 import tempfile
 import threading
+import zeroconf
 from logging import DEBUG, StreamHandler, getLogger
 from time import sleep
 
@@ -47,7 +48,7 @@ class Settings:
     timeout = 300
     rtsp_port = 7236
     rtp_port = 1028
-    myaddress = '192.168.173.1'
+    myaddress = b'192.168.173.1'
     peeraddress = '192.168.173.80'
     netmask = '255.255.255.0'
 
@@ -496,23 +497,32 @@ class PiCast:
                             conn.sendall(resp.encode("UTF-8"))
                             continue
 
+    def connect(self, sock, remote, port):
+        max_trial = 1000
+        for _ in range(max_trial):
+            try:
+                sock.connect(remote, port)
+            except Exception:
+                pass
+            else:
+                return True
+        return False
+
     def run(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            sock.bind((Settings.myaddress, Settings.rtsp_port))
-            sock.listen(1)
-            while True:
-                conn, addr = sock.accept()
-                with conn:
-                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as idrsock:
-                        idrsock_address = ('127.0.0.1', 0)
-                        idrsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                        idrsock.bind(idrsock_address)
-                        addr, idrsockport = idrsock.getsockname()
-                        self.idrsockport = str(idrsockport)
-                        if self.negotiate(conn):
-                            self.rtspsrv(conn, idrsock)
+            sd = ServiceDiscovery()
+            sd.register()
+            while self.connect(sock, Settings.peeraddress, Settings.rtsp_port):
+                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as idrsock:
+                    idrsock_address = ('127.0.0.1', 0)
+                    idrsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    idrsock.bind(idrsock_address)
+                    addr, idrsockport = idrsock.getsockname()
+                    self.idrsockport = str(idrsockport)
+                    if self.negotiate(sock):
+                        self.rtspsrv(sock, idrsock)
 
 
 class WifiP2PServer:
@@ -633,8 +643,22 @@ def setup_logger():
     logger.propagate = True
 
 
+class ServiceDiscovery():
+    def __init__(self):
+        self.zc = zeroconf.Zeroconf()
+
+    def register(self):
+        service_info = zeroconf.ServiceInfo('_display._tcp.local', 'PiCast Remote Display', Settings.myaddress, port=Settings.rtsp_port)
+        self.zc.register_service(service_info, ttl=60, allow_name_change=False)
+
+    def lookup(self):
+        service_info = self.zc.get_service_info('_displaysrc._tcp.local', '')
+        return service_info.addresses[0], service_info.port
+
+
 def app_main():
     setup_logger()
+    Gst.init(None)
     WifiP2PServer().start()
     window = Gtk.Window()
     window.set_name('PiCast')
@@ -643,6 +667,7 @@ def app_main():
     def picast_target():
         picast = PiCast(window)
         picast.run()
+        # XXX: something get wrong
         Gtk.main_quit()
 
     window.show_all()
@@ -650,9 +675,8 @@ def app_main():
     thread = threading.Thread(target=picast_target)
     thread.daemon = True
     thread.start()
+    Gtk.main()
 
 
 if __name__ == '__main__':
-    Gst.init(None)
     app_main()
-    Gtk.main()
