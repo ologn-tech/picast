@@ -169,7 +169,6 @@ class WfdVideoParameters:
         msg += 'wfd_uibc_capability: none\r\nwfd_standby_resume_capability: none\r\nwfd_content_protection: none\r\n'
         return msg
 
-
     def get_display_resolutions(self):
         output = subprocess.Popen("xrandr | egrep -oh '[0-9]+x[0-9]+'", shell=True, stdout=subprocess.PIPE).communicate()[0]
         resolutions = output.split()

@@ -27,10 +27,10 @@ class ServiceDiscovery():
         self.zc = zeroconf.Zeroconf()
 
     def register(self):
-        service_info = zeroconf.ServiceInfo('_display._tcp.local', 'PiCast Remote Display', Settings.myaddress, port=Settings.rtsp_port)
+        service_info = zeroconf.ServiceInfo('_display._tcp.local', 'PiCast Remote Display',
+                                            Settings.myaddress, port=Settings.rtsp_port)
         self.zc.register_service(service_info, ttl=60, allow_name_change=False)
 
     def lookup(self):
         service_info = self.zc.get_service_info('_displaysrc._tcp.local', '')
         return service_info.addresses[0], service_info.port
-

@@ -43,6 +43,7 @@ def setup_logger():
     logger.addHandler(handler)
     logger.propagate = True
 
+
 def main():
     setup_logger()
     WifiP2PServer().start()

@@ -43,4 +43,3 @@ class Dhcpd():
         if self.dhcpd is not None:
             self.dhcpd.terminate()
             self.conf_path.unlink()
-

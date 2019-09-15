@@ -51,8 +51,8 @@ class PiCast:
         else:
             msg += '\r\nCSeq: {0:d}\r\n'.format(seq)
         if others is not None:
-            for k,v in others:
-                msg += '{}: {}\r\n'.format(k,v)
+            for k, v in others:
+                msg += '{}: {}\r\n'.format(k, v)
         msg += '\r\n'
         return msg
 
@@ -79,7 +79,7 @@ class PiCast:
         msg = "wfd_client_rtp_ports: RTP/AVP/UDP;unicast {} 0 mode=play\r\n".format(Settings.rtp_port)\
               + WfdVideoParameters().get_video_parameter()
         m3resp = self.rtsp_response_header(seq=2,
-                                           others=[('Content-Type','text/parameters'),
+                                           others=[('Content-Type', 'text/parameters'),
                                                    ('Content-Length', len(msg))
                                                    ])
         m3resp += msg

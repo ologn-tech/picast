@@ -40,7 +40,7 @@ class WpaCli:
 
     def start_p2p_find(self):
         self.logger.debug("wpa_cli p2p_find type=progressive")
-        status = self.cmd("p2p_find","type=progressive")
+        status = self.cmd("p2p_find", "type=progressive")
         if 'OK' not in status:
             raise PiCastException("Fail to start p2p find.")
 
@@ -107,4 +107,3 @@ class WpaCli:
         if self.get_p2p_interface() is not None:
             return True
         return False
-

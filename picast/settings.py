@@ -18,6 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+
 class Settings:
     wp_device_name = 'picast'
     wp_device_type = "7-0050F204-1"
