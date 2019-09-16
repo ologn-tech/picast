@@ -31,7 +31,6 @@ Run apt install command on Rasbpian / Raspberry Pi Zero W/WH, or Raspberry Pi 3
     $ sudo apt install gstreamer1.0-plugins-good gstreamer1.0-gtk3 gstreamer1.0-plugins-rtp
     $ sudo apt install gstreamer1.0-omx-rpi gstreamer1.0-omx-rpi-config
     $ sudo apt install --no-install-recommends lxde
-    $ pip install picast
 
 For debug and development;
 
@@ -40,6 +39,18 @@ For debug and development;
     $ sudo apt install gstreamer1.0-tools
 
 Note: udhcpd is a DHCP server for Ubuntu and Debian.
+
+.. code-block::
+
+    $ git clone https://github.com/miurahr/picast
+
+Run
+---
+
+.. code-block::
+
+    $ cd picast
+    $ bin/picast
 
 
 Preparation
@@ -52,15 +63,11 @@ add `gpu_mem=128`  to `/boot/config.txt`
 Usage
 -----
 
-.. code-block::
-
-    $ picast
-
-Then, search for the wireless display named "picast" on the source device you want to cast.
+Picast search for the wireless display named "picast" on the source device you want to cast.
 Use "12345678" for a WPS PIN number.
 It is recommended to initiate the termination of the receiver on the source side.
 
-After Pi connects to the source, it has an IP address of ``192.168.173.1``
+After Pi connects to the source, it has an IP address of ``192.168.173.80``
 
 
 Autostart
@@ -71,7 +78,7 @@ Edit /home/pi/.config/lxsessions/LXDE/autostart and add line `@picast`
 .. code-block::
 
     @xscreensaver
-    @picast
+    @lxterminal -l -e /home/pi/picast/bin/picast
 
 
 Known issues

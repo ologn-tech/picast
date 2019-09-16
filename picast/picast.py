@@ -26,10 +26,10 @@ import socket
 from logging import getLogger
 from time import sleep
 
+from .discovery import ServiceDiscovery
 from .player import GstPlayer
 from .settings import Settings
 from .video import WfdVideoParameters
-from .discovery import ServiceDiscovery
 
 
 class PiCast:

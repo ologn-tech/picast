@@ -35,6 +35,10 @@ from .wifip2p import WifiP2PServer
 from .picast import PiCast
 
 
+class PiCastException(Exception):
+    pass
+
+
 def setup_logger():
     logger = getLogger("PiCast")
     handler = StreamHandler()
