@@ -32,6 +32,10 @@ from .settings import Settings
 from .video import WfdVideoParameters
 
 
+class PiCastException(Exception):
+    pass
+
+
 class PiCast:
 
     def __init__(self, window):

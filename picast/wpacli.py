@@ -21,7 +21,7 @@ import re
 import subprocess
 from logging import getLogger
 
-from . import PiCastException
+from .picast import PiCastException
 
 
 class WpaCli:

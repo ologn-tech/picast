@@ -22,7 +22,7 @@ import os
 from logging import getLogger
 from time import sleep
 
-from . import PiCastException
+from .picast import PiCastException
 from .settings import Settings
 from .wpacli import WpaCli
 from .dhcpd import Dhcpd
