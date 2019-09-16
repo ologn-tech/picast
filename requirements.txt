@@ -1,12 +1,12 @@
 # PyGObject # should install from debian/ubuntu package.
 # PyGObject-stubs
 zeroconf
-pytest
-pytest-cov
 coverage
 coveralls
 flake8
 pyannotate
+pytest
+pytest-cov
 tox
 twine
 wheel
