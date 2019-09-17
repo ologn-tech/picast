@@ -34,7 +34,7 @@ class WpaCli:
         pass
 
     def cmd(self, *argv):
-        p = subprocess.Popen(["sudo", "wpa_cli"] + argv, stdout=subprocess.PIPE)
+        p = subprocess.Popen(["sudo", "wpa_cli"] + list(argv), stdout=subprocess.PIPE)
         stdout = p.communicate()[0]
         return stdout.decode('UTF-8').splitlines()
 
@@ -75,8 +75,8 @@ class WpaCli:
             raise PiCastException("Fail to wfd_subelem_set.")
 
     def p2p_group_add(self, name):
-        self.logger.debug("wpa_cli", "p2p_group_add", name)
-        self.cmd("p2p_group_add {}".format(name))
+        self.logger.debug("wpa_cli p2p_group_add {}".format(name))
+        self.cmd("p2p_group_add",name)
 
     def set_wps_pin(self, interface, pin, timeout):
         self.logger.debug("wpa_cli -i {} wps_pin any {} {}".format(interface, pin, timeout))

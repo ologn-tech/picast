@@ -42,7 +42,8 @@ Note: udhcpd is a DHCP server for Ubuntu and Debian.
 
 .. code-block::
 
-    $ git clone https://github.com/miurahr/picast
+    $ git clone https://github.com/miurahr/picast.git picast
+
 
 Run
 ---
@@ -73,11 +74,11 @@ After Pi connects to the source, it has an IP address of ``192.168.173.80``
 Autostart
 ---------
 
-Edit /home/pi/.config/lxsessions/LXDE/autostart and add line `@picast`
+Edit /home/pi/.config/lxsessions/LXDE/autostart
 
 .. code-block::
 
-    @xscreensaver
+    @xscreensaver -no-splash
     @lxterminal -l -e /home/pi/picast/bin/picast
 
 

@@ -169,7 +169,41 @@ class WfdVideoParameters:
         msg += 'wfd_uibc_capability: none\r\nwfd_standby_resume_capability: none\r\nwfd_content_protection: none\r\n'
         return msg
 
+
+    def retrieve_xrandr(self):
+        return subprocess.Popen("xrandr | egrep -oh '[0-9]+x[0-9]+\s+[0-9]+\.[0-9]+'",
+                                shell=True, stdout=subprocess.PIPE).communicate()[0]
+
     def get_display_resolutions(self):
-        output = subprocess.Popen("xrandr | egrep -oh '[0-9]+x[0-9]+'", shell=True, stdout=subprocess.PIPE).communicate()[0]
-        resolutions = output.split()
-        return resolutions
+        cea = []
+        vesa = []
+        output = self.retrieve_xrandr().split(b"\n")
+        for r in output:
+            if r != b'':
+                ores, oref = r.split()
+                res = ores.decode('ascii')
+                ref = oref.decode('ascii')
+                if 58.0 < float(ref) < 62.0:
+                    ref = 60
+                elif 28.0 < float(ref) < 32.0:
+                    ref = 30
+                else:
+                    ref = 24
+                x , y = res.split('x')
+                found = False
+                for res in self.resolutions_cea:
+                    if not res.progressive:
+                        continue
+                    if (res.width, res.height, res.refresh) == (int(x), int(y), ref):
+                        cea.append(res)
+                        found = True
+                        break
+                if found:
+                    continue
+                for res in self.resolutions_vesa:
+                    if not res.progressive:
+                        continue
+                    if (res.width, res.height, res.refresh) == (int(x), int(y), ref):
+                        vesa.append(res)
+                        break
+        return cea, vesa

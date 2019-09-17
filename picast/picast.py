@@ -23,11 +23,11 @@ import fcntl
 import os
 import re
 import socket
+import threading
 from logging import getLogger
 from time import sleep
 
 from .discovery import ServiceDiscovery
-from .player import GstPlayer
 from .settings import Settings
 from .video import WfdVideoParameters
 
@@ -36,12 +36,13 @@ class PiCastException(Exception):
     pass
 
 
-class PiCast:
+class PiCast(threading.Thread):
 
-    def __init__(self, window):
+    def __init__(self, window, player):
+        super(PiCast, self).__init__(name='picast-rtsp-0', daemon=True)
         self.logger = getLogger("PiCast")
         self.window = window
-        self.player = GstPlayer()
+        self.player = player
         self.watchdog = 0
         self.csnum = 0
 
@@ -220,12 +221,12 @@ class PiCast:
                             continue
 
     def connect(self, sock, remote, port):
-        max_trial = 1000
+        max_trial = 1200
         for _ in range(max_trial):
             try:
                 sock.connect(remote, port)
             except Exception:
-                pass
+                sleep(0.1)
             else:
                 return True
         return False
@@ -236,7 +237,7 @@ class PiCast:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             sd = ServiceDiscovery()
             sd.register()
-            while self.connect(sock, Settings.peeraddress, Settings.rtsp_port):
+            if self.connect(sock, Settings.peeraddress, Settings.rtsp_port):
                 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as idrsock:
                     idrsock_address = ('127.0.0.1', 0)
                     idrsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -245,3 +246,5 @@ class PiCast:
                     self.idrsockport = str(idrsockport)
                     if self.negotiate(sock):
                         self.rtspsrv(sock, idrsock)
+            else:
+                sleep(30)

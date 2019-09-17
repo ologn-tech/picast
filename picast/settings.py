@@ -27,6 +27,6 @@ class Settings:
     timeout = 300
     rtsp_port = 7236
     rtp_port = 1028
-    myaddress = b'192.168.173.1'
+    myaddress = '192.168.173.1'
     peeraddress = '192.168.173.80'
     netmask = '255.255.255.0'

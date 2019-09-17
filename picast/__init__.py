@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import os
-import threading
+import sys
 from logging import getLogger, DEBUG, StreamHandler
 
 import gi
@@ -33,9 +33,10 @@ from gi.repository import Gtk  # noqa: E402 # isort:skip
 
 from .wifip2p import WifiP2PServer
 from .picast import PiCast
+from .player import GstPlayer
 
 
-def setup_logger():
+def main():
     logger = getLogger("PiCast")
     handler = StreamHandler()
     handler.setLevel(DEBUG)
@@ -43,23 +44,21 @@ def setup_logger():
     logger.addHandler(handler)
     logger.propagate = True
 
+    wifip2p = WifiP2PServer()
+    wifip2p.start()
 
-def main():
-    setup_logger()
-    WifiP2PServer().start()
     window = Gtk.Window()
     window.set_name('PiCast')
     window.connect('destroy', Gtk.main_quit)
-
-    def picast_target():
-        picast = PiCast(window)
-        picast.run()
-        # XXX: something get wrong
-        Gtk.main_quit()
-
     window.show_all()
 
-    thread = threading.Thread(target=picast_target)
-    thread.daemon = True
-    thread.start()
+    player = GstPlayer()
+    picast = PiCast(window, player)
+
+    picast.start()
+
     Gtk.main()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

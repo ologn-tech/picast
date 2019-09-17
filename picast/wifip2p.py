@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import os
+import threading
 from logging import getLogger
 from time import sleep
 
@@ -28,10 +29,13 @@ from .wpacli import WpaCli
 from .dhcpd import Dhcpd
 
 
-class WifiP2PServer:
+class WifiP2PServer(threading.Thread):
 
-    def start(self):
+    def __init__(self):
+        super(WifiP2PServer, self).__init__(name='wifi-p2p-0', daemon=False)
         self.set_p2p_interface()
+
+    def run(self):
         self.start_dhcpd()
         self.start_wps()
 
@@ -42,7 +46,6 @@ class WifiP2PServer:
     def start_dhcpd(self):
         dhcpd = Dhcpd(self.wlandev)
         dhcpd.start()
-        sleep(0.5)
 
     def wfd_devinfo(self):
         type = 0b01  # PRIMARY_SINK
@@ -62,6 +65,16 @@ class WifiP2PServer:
     def wfd_sink_info(self, status, mac):
         return '0007{0:02x}{1:012x}'.format(status, mac)
 
+    def wfd_ext_cap(self, uibc=False, i2c=False):
+        val_uibc = 0b1 if uibc else 0b0
+        val_i2c = (0b1 if i2c else 0b0) << 1
+        val = val_uibc | val_i2c
+        return '0002{0:04X}'.format(val)
+
+    def wfd_devinfo2(self):
+        r2_sink = 0b01
+        return '0002{0:04X}'.format(r2_sink)
+
     def create_p2p_interface(self):
         wpacli = WpaCli()
         wpacli.start_p2p_find()
@@ -71,6 +84,8 @@ class WifiP2PServer:
         wpacli.wfd_subelem_set(0, self.wfd_devinfo())
         wpacli.wfd_subelem_set(1, self.wfd_bssid(0))
         wpacli.wfd_subelem_set(6, self.wfd_sink_info(0, 0))
+        wpacli.wfd_subelem_set(7, self.wfd_ext_cap(uibc=False, i2c=False))
+        wpacli.wfd_subelem_set(11, self.wfd_devinfo2())
         wpacli.p2p_group_add(Settings.wp_group_name)
 
     def set_p2p_interface(self):
@@ -85,6 +100,6 @@ class WifiP2PServer:
             p2p_interface = wpacli.get_p2p_interface()
             if p2p_interface is None:
                 raise PiCastException("Can not create P2P Wifi interface.")
-            logger.info("Start p2p interface: {}".format(p2p_interface))
+            logger.info("Start p2p interface: {} address {}".format(p2p_interface, Settings.myaddress))
             os.system("sudo ifconfig {} {}".format(p2p_interface, Settings.myaddress))
         self.wlandev = p2p_interface
