@@ -6,9 +6,14 @@ import pytest
 
 
 @pytest.mark.unit
-def test_get_video_parameter():
+def test_get_video_parameter(monkeypatch):
+    def mockreturn(self):
+        return b'1920x1080     60.05\n1680x1050     59.95\n1600x1024     60.17\n1400x1050     59.98\n1600x900      59.99\n1280x1024     60.02\n1440x900      59.89\n1400x900      59.96\n1280x960      60.00\n1440x810      60.00\n1368x768      59.88\n1360x768      59.80\n1280x800      59.99\n1152x864      60.00\n1280x720      60.00\n1024x768      60.04\n800x600       60.00\n640x480       60.00\n640x400       59.88\n'  # noqa
+
+    monkeypatch.setattr(WfdVideoParameters, "retrieve_xrandr", mockreturn)
+
     expected = "wfd_audio_codecs: AAC 00000001 00, LPCM 00000002 00\r\n" \
-               "wfd_video_formats: 08 00 03 10 0001FFFF 0FFFFFFF 00000000 00 0000 0000 00 none none\r\n" \
+               "wfd_video_formats: 08 00 03 10 00000141 08228A0A 00000000 00 0000 0000 00 none none\r\n" \
                "wfd_3d_video_formats: none\r\nwfd_coupled_sink: none\r\nwfd_display_edid: none\r\n" \
                "wfd_connector_type: 05\r\nwfd_uibc_capability: none\r\nwfd_standby_resume_capability: none\r\n" \
                "wfd_content_protection: none\r\n"

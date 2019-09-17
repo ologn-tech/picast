@@ -160,8 +160,15 @@ class WfdVideoParameters:
         preferred = 0
         profile = 0x02 | 0x01
         level = 0x10
-        cea = 0x0001FFFF
-        vesa = 0x0FFFFFFF
+        dev_cea, dev_vesa = self.get_display_resolutions()
+        cea = 0
+        for r in dev_cea:
+            cea |= 1 << r.id
+        # cea = 0x0001FFFF
+        vesa = 0
+        for r in dev_vesa:
+            vesa |= 1 << r.id
+        # vesa = 0x0FFFFFFF
         handheld = 0x0
         msg += 'wfd_video_formats: {0:02X} {1:02X} {2:02X} {3:02X} {4:08X} {5:08X} {6:08X} 00 0000 0000 00 none none\r\n' \
                .format(native, preferred, profile, level, cea, vesa, handheld)
