@@ -20,13 +20,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 import threading
-from logging import getLogger
 from time import sleep
 
-from .picast import PiCastException
-from .settings import Settings
-from .wpacli import WpaCli
-from .dhcpd import Dhcpd
+from picast import get_module_logger
+from picast.dhcpd import Dhcpd
+from picast.picast import PiCastException
+from picast.settings import Settings
+from picast.wpacli import WpaCli
 
 
 class WifiP2PServer(threading.Thread):
@@ -34,6 +34,7 @@ class WifiP2PServer(threading.Thread):
     def __init__(self):
         super(WifiP2PServer, self).__init__(name='wifi-p2p-0', daemon=False)
         self.set_p2p_interface()
+        self.logger = get_module_logger(__name__)
 
     def run(self):
         self.start_dhcpd()
@@ -89,10 +90,9 @@ class WifiP2PServer(threading.Thread):
         wpacli.p2p_group_add(Settings.wp_group_name)
 
     def set_p2p_interface(self):
-        logger = getLogger("PiCast")
         wpacli = WpaCli()
         if wpacli.check_p2p_interface():
-            logger.info("Already set a p2p interface.")
+            self.logger.info("Already set a p2p interface.")
             p2p_interface = wpacli.get_p2p_interface()
         else:
             self.create_p2p_interface()
@@ -100,6 +100,6 @@ class WifiP2PServer(threading.Thread):
             p2p_interface = wpacli.get_p2p_interface()
             if p2p_interface is None:
                 raise PiCastException("Can not create P2P Wifi interface.")
-            logger.info("Start p2p interface: {} address {}".format(p2p_interface, Settings.myaddress))
+            self.logger.info("Start p2p interface: {} address {}".format(p2p_interface, Settings.myaddress))
             os.system("sudo ifconfig {} {}".format(p2p_interface, Settings.myaddress))
         self.wlandev = p2p_interface

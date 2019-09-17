@@ -13,7 +13,7 @@ def test_get_video_parameter(monkeypatch):
     monkeypatch.setattr(WfdVideoParameters, "retrieve_xrandr", mockreturn)
 
     expected = "wfd_audio_codecs: AAC 00000001 00, LPCM 00000002 00\r\n" \
-               "wfd_video_formats: 08 00 03 10 00000141 08228A0A 00000000 00 0000 0000 00 none none\r\n" \
+               "wfd_video_formats: 08 00 03 10 00000141 08288A0A 00000000 00 0000 0000 00 none none\r\n" \
                "wfd_3d_video_formats: none\r\nwfd_coupled_sink: none\r\nwfd_display_edid: none\r\n" \
                "wfd_connector_type: 05\r\nwfd_uibc_capability: none\r\nwfd_standby_resume_capability: none\r\n" \
                "wfd_content_protection: none\r\n"
@@ -82,7 +82,10 @@ def test_wpacli_set_p2p_go_ht40(monkeypatch):
 
 
 @pytest.mark.unit
-def test_devinfo():
+def test_devinfo(monkeypatch):
+    def mockreturn(self, *arg):
+        return
+    monkeypatch.setattr(WifiP2PServer, "set_p2p_interface", mockreturn)
     p2p = WifiP2PServer()
     assert  p2p.wfd_devinfo() == '00060151022a012c'
 

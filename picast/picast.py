@@ -24,12 +24,12 @@ import os
 import re
 import socket
 import threading
-from logging import getLogger
 from time import sleep
 
-from .discovery import ServiceDiscovery
-from .settings import Settings
-from .video import WfdVideoParameters
+from picast import get_module_logger
+from picast.discovery import ServiceDiscovery
+from picast.settings import Settings
+from picast.video import WfdVideoParameters
 
 
 class PiCastException(Exception):
@@ -40,7 +40,7 @@ class PiCast(threading.Thread):
 
     def __init__(self, window, player):
         super(PiCast, self).__init__(name='picast-rtsp-0', daemon=True)
-        self.logger = getLogger("PiCast")
+        self.logger = get_module_logger(__name__)
         self.window = window
         self.player = player
         self.watchdog = 0
@@ -62,25 +62,22 @@ class PiCast(threading.Thread):
         return msg
 
     def cast_seq_m1(self, sock):
-        logger = getLogger("PiCast.m1")
         data = (sock.recv(1000))  # RTSP OPTIONS message
-        logger.debug("<-{}".format(data))
+        self.logger.debug("<-{}".format(data))
         s_data = self.rtsp_response_header(seq=1, others=[("Public", "org.wfs.wfd1.0, SET_PARAMETER, GET_PARAMETER")])
-        logger.debug("->{}".format(s_data))
+        self.logger.debug("->{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
 
     def cast_seq_m2(self, sock):
-        logger = getLogger("PiCast.m2")
         s_data = self.rtsp_response_header(seq=100, others=[('Require', 'org.wfs.wfd1.0')])
-        logger.debug("<-{}".format(s_data))
+        self.logger.debug("<-{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
         data = (sock.recv(1000))
-        logger.debug("->{}".format(data))
+        self.logger.debug("->{}".format(data))
 
     def cast_seq_m3(self, sock):
-        logger = getLogger("PiCast.m3")
         data = (sock.recv(1000))
-        logger.debug("->{}".format(data))
+        self.logger.debug("->{}".format(data))
         msg = "wfd_client_rtp_ports: RTP/AVP/UDP;unicast {} 0 mode=play\r\n".format(Settings.rtp_port)\
               + WfdVideoParameters().get_video_parameter()
         m3resp = self.rtsp_response_header(seq=2,
@@ -88,27 +85,24 @@ class PiCast(threading.Thread):
                                                    ('Content-Length', len(msg))
                                                    ])
         m3resp += msg
-        logger.debug("<-{}".format(m3resp))
+        self.logger.debug("<-{}".format(m3resp))
         sock.sendall(m3resp.encode("UTF-8"))
 
     def cast_seq_m4(self, sock):
-        logger = getLogger("PiCast.m4")
         data = (sock.recv(1000)).decode("UTF-8")
-        logger.debug("->{}".format(data))
+        self.logger.debug("->{}".format(data))
         s_data = self.rtsp_response_header(res="200 OK", seq=3)
-        logger.debug("<-{}".format(s_data))
+        self.logger.debug("<-{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
 
     def cast_seq_m5(self, sock):
-        logger = getLogger("PiCast.m5")
         data = (sock.recv(1000))
-        logger.debug("->{}".format(data))  # wfd-triggered-method
+        self.logger.debug("->{}".format(data))  # wfd-triggered-method
         s_data = self.rtsp_response_header(res="200 OK", seq=4)
-        logger.debug("<-{}".format(s_data))
+        self.logger.debug("<-{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
 
     def cast_seq_m6(self, sock):
-        logger = getLogger("PiCast.m6")
         m6req = self.rtsp_response_header(cmd="SETUP",
                                           url="rtsp://{0:s}/wfd1.0/streamid=0".format(Settings.peeraddress),
                                           seq=101,
@@ -116,34 +110,32 @@ class PiCast(threading.Thread):
                                               ('Transport',
                                                'RTP/AVP/UDP;unicast;client_port={0:d}'.format(Settings.rtp_port))
                                           ])
-        logger.debug("<-{}".format(m6req))
+        self.logger.debug("<-{}".format(m6req))
         sock.sendall(m6req.encode("UTF-8"))
         data = (sock.recv(1000))
-        logger.debug("->{}".format(data))
+        self.logger.debug("->{}".format(data))
         paralist = data.decode("UTF-8").split(';')
         serverport = [x for x in paralist if 'server_port=' in x]
-        logger.debug("server port {}".format(serverport))
+        self.logger.debug("server port {}".format(serverport))
         serverport = serverport[-1]
         serverport = serverport[12:17]
-        logger.debug("server port {}".format(serverport))
+        self.logger.debug("server port {}".format(serverport))
         paralist = data.decode("UTF-8").split()
         position = paralist.index('Session:') + 1
         sessionid = paralist[position]
         return sessionid
 
     def cast_seq_m7(self, sock, sessionid):
-        logger = getLogger("PiCast.m7")
         m7req = self.rtsp_response_header(cmd='PLAY',
                                           url='rtsp://{0:s}/wfd1.0/streamid=0 RTSP/1.0'.format(Settings.peeraddress),
                                           seq=102,
                                           others=[('Session', sessionid)])
-        logger.debug("<-{}".format(m7req))
+        self.logger.debug("<-{}".format(m7req))
         sock.sendall(m7req.encode("UTF-8"))
         data = (sock.recv(1000))
-        logger.debug("->{}".format(data))
+        self.logger.debug("->{}".format(data))
 
-    def handle_recv_err(self, e, sock, idrsock, csnum):
-        logger = getLogger("PiCast.daemon.error")
+    def handle_recv_err(self, e, sock, idrsock, csnum) -> int:
         err = e.args[0]
         if err == errno.EAGAIN or err == errno.EWOULDBLOCK:
             try:
@@ -157,7 +149,7 @@ class PiCast(threading.Thread):
                         self.player.stop()
                         sleep(1)
                 else:
-                    logger.debug("socket error.")
+                    self.logger.debug("socket error.")
             else:
                 csnum = csnum + 1
                 msg = 'wfd-idr-request\r\n'
@@ -168,15 +160,14 @@ class PiCast(threading.Thread):
                                                        ('Content-Type', 'text/parameters')
                                                    ])
                 idrreq += msg
-                logger.debug("idreq: {}".format(idrreq))
+                self.logger.debug("idreq: {}".format(idrreq))
                 sock.sendall(idrreq.encode("UTF-8"))
         else:
-            logger.debug("Exit becuase of socket error.")
+            self.logger.debug("Exit becuase of socket error.")
         return csnum
 
-    def negotiate(self, conn):
-        logger = getLogger("Picast.daemon")
-        logger.debug("---- Start negotiation ----")
+    def negotiate(self, conn) -> bool:
+        self.logger.debug("---- Start negotiation ----")
         self.cast_seq_m1(conn)
         self.cast_seq_m2(conn)
         self.cast_seq_m3(conn)
@@ -184,11 +175,10 @@ class PiCast(threading.Thread):
         self.cast_seq_m5(conn)
         sessionid = self.cast_seq_m6(conn)
         self.cast_seq_m7(conn, sessionid)
-        logger.debug("---- Negotiation successful ----")
+        self.logger.debug("---- Negotiation successful ----")
         return True
 
     def rtspsrv(self, conn, idrsock):
-        logger = getLogger("PiCast.rtspsrv")
         fcntl.fcntl(conn, fcntl.F_SETFL, os.O_NONBLOCK)
         fcntl.fcntl(idrsock, fcntl.F_SETFL, os.O_NONBLOCK)
         csnum = 102
@@ -198,33 +188,33 @@ class PiCast(threading.Thread):
             except socket.error as e:
                 watchdog, csnum = self.handle_recv_err(e, conn, idrsock, csnum)
             else:
-                logger.debug("->{}".format(data))
+                self.logger.debug("->{}".format(data))
                 self.watchdog = 0
                 if len(data) == 0 or 'wfd_trigger_method: TEARDOWN' in data:
                     self.player.stop()
                     sleep(1)
                     break
                 elif 'wfd_video_formats' in data:
-                    logger.info('start player')
+                    self.logger.info('start player')
                     self.player.start()
                 messagelist = data.splitlines()
                 singlemessagelist = [x for x in messagelist if ('GET_PARAMETER' in x or 'SET_PARAMETER' in x)]
-                logger.debug(singlemessagelist)
+                self.logger.debug(singlemessagelist)
                 for singlemessage in singlemessagelist:
                     entrylist = singlemessage.splitlines()
                     for entry in entrylist:
                         if re.match(r'CSeq:', entry):
                             cseq = entry.rstrip()
                             resp = self.rtsp_response_header(seq=cseq, res="200 OK")
-                            logger.debug("<-{}".format(resp))
+                            self.logger.debug("<-{}".format(resp))
                             conn.sendall(resp.encode("UTF-8"))
                             continue
 
-    def connect(self, sock, remote, port):
+    def connect(self, sock, remote: str, port: int) -> bool:
         max_trial = 1200
         for _ in range(max_trial):
             try:
-                sock.connect(remote, port)
+                sock.connect((remote, port))
             except Exception:
                 sleep(0.1)
             else:
@@ -237,7 +227,9 @@ class PiCast(threading.Thread):
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             sd = ServiceDiscovery()
             sd.register()
+            self.logger.debug("Register mDNS/SD entry.")
             if self.connect(sock, Settings.peeraddress, Settings.rtsp_port):
+                self.logger.debug("Connected to Wfd-source in {}.".format(Settings.peeraddress))
                 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as idrsock:
                     idrsock_address = ('127.0.0.1', 0)
                     idrsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -247,4 +239,5 @@ class PiCast(threading.Thread):
                     if self.negotiate(sock):
                         self.rtspsrv(sock, idrsock)
             else:
+                self.logger.debug("Fails to connect. Wait for peer...")
                 sleep(30)

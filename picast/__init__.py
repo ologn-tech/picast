@@ -36,14 +36,17 @@ from .picast import PiCast
 from .player import GstPlayer
 
 
-def main():
-    logger = getLogger("PiCast")
+def get_module_logger(modname):
+    logger = getLogger(modname)
     handler = StreamHandler()
+    logger.addHandler(handler)
     handler.setLevel(DEBUG)
     logger.setLevel(DEBUG)
-    logger.addHandler(handler)
     logger.propagate = True
+    return logger
 
+
+def main():
     wifip2p = WifiP2PServer()
     wifip2p.start()
 

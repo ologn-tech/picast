@@ -17,19 +17,22 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+
 import subprocess
 import tempfile
 
-from .settings import Settings
+from picast import get_module_logger
+from picast.settings import Settings
 
 
 class Dhcpd():
     """DHCP server daemon running in background."""
 
-    def __init__(self, interface):
+    def __init__(self, interface: str):
         """Constructor accept an interface to listen."""
         self.dhcpd = None
         self.interface = interface
+        self.logger = get_module_logger(__name__)
 
     def start(self):
         fd, self.conf_path = tempfile.mkstemp(suffix='.conf')
@@ -37,6 +40,7 @@ class Dhcpd():
             Settings.peeraddress, Settings.peeraddress, self.interface, Settings.netmask, Settings.timeout)
         with open(self.conf_path, 'w') as c:
             c.write(conf)
+        self.logger.debug("Start dhcpd server.")
         self.dhcpd = subprocess.Popen(["sudo", "udhcpd", self.conf_path])
 
     def stop(self):

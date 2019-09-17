@@ -23,6 +23,8 @@ from .settings import Settings
 
 
 class ServiceDiscovery():
+    """Register and query mDNS/SD entries"""
+
     def __init__(self):
         self.zc = zeroconf.Zeroconf()
 
@@ -32,5 +34,5 @@ class ServiceDiscovery():
         self.zc.register_service(service_info, ttl=60, allow_name_change=False)
 
     def lookup(self):
-        service_info = self.zc.get_service_info('_displaysrc._tcp.local.', '')
-        return service_info.addresses[0], service_info.port
+        service_info = self.zc.get_service_info('_displaysrc._tcp.local.', None)
+        return service_info.addresses, service_info.port

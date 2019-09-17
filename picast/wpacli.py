@@ -19,9 +19,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import re
 import subprocess
-from logging import getLogger
 
-from .picast import PiCastException
+from picast import get_module_logger
+from picast.picast import PiCastException
 
 
 class WpaCli:
@@ -30,7 +30,7 @@ class WpaCli:
     """
 
     def __init__(self):
-        self.logger = getLogger("PiCast")
+        self.logger = get_module_logger(__name__)
         pass
 
     def cmd(self, *argv):
