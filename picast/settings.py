@@ -30,3 +30,37 @@ class Settings:
     myaddress = '192.168.173.1'
     peeraddress = '192.168.173.80'
     netmask = '255.255.255.0'
+    logger = 'picast'
+    log_config = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'verbose': {
+                'format': '%(levelname)s %(asctime)s %(module)s %(thread)d %(message)s'
+            },
+            'simple': {
+                'format': '%(levelname)s %(message)s'
+            },
+        },
+        'handlers': {
+            'console':{
+                'level':'DEBUG',
+                'class':'logging.StreamHandler',
+                'formatter': 'simple'
+            },
+        },
+        'loggers': {
+            'picast': {
+                'handlers':['console'],
+                'propagate': True,
+                'level':'DEBUG',
+            },
+            'root': {
+                'handlers': ['console'],
+                'level': 'DEBUG'
+            },
+        }
+
+    }
+
+

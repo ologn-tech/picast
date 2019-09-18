@@ -17,11 +17,13 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+
 import re
 import subprocess
+from logging import getLogger
 
-from picast import get_module_logger
 from picast.picast import PiCastException
+from picast.settings import Settings
 
 
 class WpaCli:
@@ -30,7 +32,7 @@ class WpaCli:
     """
 
     def __init__(self):
-        self.logger = get_module_logger(__name__)
+        self.logger = getLogger(Settings.logger)
         pass
 
     def cmd(self, *argv):

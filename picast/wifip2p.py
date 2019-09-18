@@ -20,9 +20,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 import threading
+from logging import getLogger
 from time import sleep
 
-from picast import get_module_logger
 from picast.dhcpd import Dhcpd
 from picast.picast import PiCastException
 from picast.settings import Settings
@@ -34,7 +34,7 @@ class WifiP2PServer(threading.Thread):
     def __init__(self):
         super(WifiP2PServer, self).__init__(name='wifi-p2p-0', daemon=False)
         self.set_p2p_interface()
-        self.logger = get_module_logger(__name__)
+        self.logger = getLogger(Settings.logger)
 
     def run(self):
         self.start_dhcpd()

@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import os
+from logging import getLogger
 
 import gi
 
@@ -29,13 +30,12 @@ gi.require_version('GstVideo', '1.0')  # noqa: E402 # isort:skip
 gi.require_version('GdkX11', '3.0')  # noqa: E402 # isort:skip
 from gi.repository import Gst, Gtk  # noqa: E402 # isort:skip
 
-from picast import get_module_logger
 from picast.settings import Settings
 
 
 class GstPlayer(Gtk.Window):
     def __init__(self):
-        self.logger = get_module_logger(__name__)
+        self.logger = getLogger(Settings.logger)
         Gst.init(None)
         gstcommand = "udpsrc port={0:d} caps=\"application/x-rtp, media=video\" ".format(Settings.rtp_port)
         gstcommand += "! rtph264depay ! omxh264dec ! videoconvert ! autovideosink"

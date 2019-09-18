@@ -24,9 +24,9 @@ import os
 import re
 import socket
 import threading
+from logging import getLogger
 from time import sleep
 
-from picast import get_module_logger
 from picast.discovery import ServiceDiscovery
 from picast.settings import Settings
 from picast.video import WfdVideoParameters
@@ -40,7 +40,7 @@ class PiCast(threading.Thread):
 
     def __init__(self, window, player):
         super(PiCast, self).__init__(name='picast-rtsp-0', daemon=True)
-        self.logger = get_module_logger(__name__)
+        self.logger = getLogger(Settings.logger)
         self.window = window
         self.player = player
         self.watchdog = 0
@@ -228,6 +228,7 @@ class PiCast(threading.Thread):
             sd = ServiceDiscovery()
             sd.register()
             self.logger.debug("Register mDNS/SD entry.")
+            self.logger.info("Start connecting...")
             if self.connect(sock, Settings.peeraddress, Settings.rtsp_port):
                 self.logger.debug("Connected to Wfd-source in {}.".format(Settings.peeraddress))
                 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as idrsock:

@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 import sys
-from logging import getLogger, DEBUG, StreamHandler
+from logging import config
 
 import gi
 
@@ -31,35 +31,26 @@ gi.require_version('GstVideo', '1.0')  # noqa: E402 # isort:skip
 gi.require_version('GdkX11', '3.0')  # noqa: E402 # isort:skip
 from gi.repository import Gtk  # noqa: E402 # isort:skip
 
-from .wifip2p import WifiP2PServer
-from .picast import PiCast
-from .player import GstPlayer
-
-
-def get_module_logger(modname):
-    logger = getLogger(modname)
-    handler = StreamHandler()
-    logger.addHandler(handler)
-    handler.setLevel(DEBUG)
-    logger.setLevel(DEBUG)
-    logger.propagate = True
-    return logger
+from picast.picast import PiCast
+from picast.player import GstPlayer
+from picast.settings import Settings
+from picast.wifip2p import WifiP2PServer
 
 
 def main():
+    config.dictConfig(Settings.log_config)
+
     wifip2p = WifiP2PServer()
     wifip2p.start()
 
     window = Gtk.Window()
     window.set_name('PiCast')
     window.connect('destroy', Gtk.main_quit)
-    window.show_all()
 
     player = GstPlayer()
     picast = PiCast(window, player)
-
     picast.start()
-
+    window.show_all()
     Gtk.main()
 
 
