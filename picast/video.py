@@ -19,11 +19,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import subprocess
+from typing import List, Tuple
 
 
 class Res:
 
-    def __init__(self, id, width, height, refresh, progressive=True, h264level='3.1', h265level='3.1'):
+    def __init__(self, id:int, width:int, height:int, refresh:int, progressive:bool=True, h264level:str='3.1', h265level:str='3.1'):
         self.id = id
         self.width = width
         self.height = height
@@ -33,7 +34,7 @@ class Res:
         self.h265level = h265level
 
     @property
-    def score(self):
+    def score(self) -> int:
         return self.width * self.height * self.refresh * (1 + 1 if self.progressive else 0)
 
     def __repr__(self):
@@ -142,7 +143,7 @@ class WfdVideoParameters:
         Res(11, 848, 480, 60),
     ]
 
-    def get_video_parameter(self):
+    def get_video_parameter(self) -> str:
         # audio_codec: LPCM:0x01, AAC:0x02, AC3:0x04
         # audio_sampling_frequency: 44.1khz:1, 48khz:2
         # LPCM: 44.1kHz, 16b; 48 kHZ,16b
@@ -157,19 +158,17 @@ class WfdVideoParameters:
         # profile: Constrained High Profile: 0x02, Constraint Baseline Profile: 0x01
         # level: H264 level 3.1: 0x01, 3.2: 0x02, 4.0: 0x04,4.1:0x08, 4.2=0x10
         #   3.2: 720p60,  4.1: FullHD@24, 4.2: FullHD@60
-        native = 0x08
+        native = 0x06
         preferred = 0
         profile = 0x02 | 0x01
-        level = 0x10
+        level = 0x02
         dev_cea, dev_vesa = self.get_display_resolutions()
         cea = 0
         for r in dev_cea:
             cea |= 1 << r.id
-        # cea = 0x0001FFFF
         vesa = 0
         for r in dev_vesa:
             vesa |= 1 << r.id
-        # vesa = 0x0FFFFFFF
         handheld = 0x0
         msg += 'wfd_video_formats: {0:02X} {1:02X} {2:02X} {3:02X} {4:08X} {5:08X} {6:08X} 00 0000 0000 00 none none\r\n' \
                .format(native, preferred, profile, level, cea, vesa, handheld)
@@ -178,11 +177,11 @@ class WfdVideoParameters:
         return msg
 
 
-    def retrieve_xrandr(self):
+    def retrieve_xrandr(self) -> str:
         return subprocess.Popen("xrandr | egrep -oh '[0-9]+x[0-9]+\s+[0-9]+\.[0-9]+'",
                                 shell=True, stdout=subprocess.PIPE).communicate()[0]
 
-    def get_display_resolutions(self):
+    def get_display_resolutions(self) -> Tuple[List[Res], List[Res]]:
         cea = []
         vesa = []
         output = self.retrieve_xrandr().split(b"\n")

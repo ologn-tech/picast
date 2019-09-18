@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import re
 import subprocess
 from logging import getLogger
+from typing import List, Tuple, Optional
 
 from picast.picast import PiCastException
 from picast.settings import Settings
@@ -52,7 +53,7 @@ class WpaCli:
         if 'OK' not in status:
             raise PiCastException("Fail to stop p2p find.")
 
-    def set_device_name(self, name):
+    def set_device_name(self, name:str):
         self.logger.debug("wpa_cli set device_name {}".format(name))
         status = self.cmd("set", "device_name", name)
         if 'OK' not in status:
@@ -70,22 +71,22 @@ class WpaCli:
         if 'OK' not in status:
             raise PiCastException("Fail to set p2p_go_ht40")
 
-    def wfd_subelem_set(self, key, val):
+    def wfd_subelem_set(self, key:int, val:str):
         self.logger.debug("wpa_cli wfd_subelem_set {0:d} {1:s}".format(key, val))
         status = self.cmd("wfd_subelem_set", "{0:d}".format(key), val)
         if 'OK' not in status:
             raise PiCastException("Fail to wfd_subelem_set.")
 
-    def p2p_group_add(self, name):
+    def p2p_group_add(self, name:str):
         self.logger.debug("wpa_cli p2p_group_add {}".format(name))
         self.cmd("p2p_group_add",name)
 
-    def set_wps_pin(self, interface, pin, timeout):
-        self.logger.debug("wpa_cli -i {} wps_pin any {} {}".format(interface, pin, timeout))
-        status = self.cmd("-i", interface, "wps_pin", "any", "{}".format(pin), "{}".format(timeout))
+    def set_wps_pin(self, interface:str, pin:str, timeout:int):
+        self.logger.debug("wpa_cli -i {0:s} wps_pin any {1:s} {2:d}".format(interface, pin, timeout))
+        status = self.cmd("-i", interface, "wps_pin", "any", "{0:s}".format(pin), "{0:d}".format(timeout))
         return status
 
-    def get_interfaces(self):
+    def get_interfaces(self) -> Tuple[str, List[str]]:
         selected = None
         interfaces = []
         status = self.cmd("interface")
@@ -98,14 +99,14 @@ class WpaCli:
                 interfaces.append(str(ln))
         return selected, interfaces
 
-    def get_p2p_interface(self):
+    def get_p2p_interface(self) -> Optional[str]:
         sel, interfaces = self.get_interfaces()
         for it in interfaces:
             if it.startswith("p2p-wl"):
                 return it
         return None
 
-    def check_p2p_interface(self):
+    def check_p2p_interface(self) -> bool:
         if self.get_p2p_interface() is not None:
             return True
         return False

@@ -49,6 +49,7 @@ def main():
     picast = PiCast(player)
     picast.start()
     picast.join()
+    return 0
 
 
 if __name__ == "__main__":
