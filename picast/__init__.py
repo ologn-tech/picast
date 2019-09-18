@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import os
 import sys
 from logging import config
+from time import sleep
 
 import gi
 
@@ -29,7 +30,6 @@ gi.require_version('Gst', '1.0')  # noqa: E402 # isort:skip
 gi.require_version('Gtk', '3.0')  # noqa: E402 # isort:skip
 gi.require_version('GstVideo', '1.0')  # noqa: E402 # isort:skip
 gi.require_version('GdkX11', '3.0')  # noqa: E402 # isort:skip
-from gi.repository import Gtk  # noqa: E402 # isort:skip
 
 from picast.picast import PiCast
 from picast.player import GstPlayer
@@ -43,15 +43,12 @@ def main():
     wifip2p = WifiP2PServer()
     wifip2p.start()
 
-    window = Gtk.Window()
-    window.set_name('PiCast')
-    window.connect('destroy', Gtk.main_quit)
+    sleep(3)
 
     player = GstPlayer()
-    picast = PiCast(window, player)
+    picast = PiCast(player)
     picast.start()
-    window.show_all()
-    Gtk.main()
+    picast.join()
 
 
 if __name__ == "__main__":

@@ -38,13 +38,13 @@ class PiCastException(Exception):
 
 class PiCast(threading.Thread):
 
-    def __init__(self, window, player):
+    def __init__(self, player):
         super(PiCast, self).__init__(name='picast-rtsp-0', daemon=True)
         self.logger = getLogger(Settings.logger)
-        self.window = window
         self.player = player
         self.watchdog = 0
         self.csnum = 0
+        self.daemon = True
 
     def rtsp_response_header(self, cmd=None, url=None, res=None, seq=None, others=None):
         if cmd is not None:
