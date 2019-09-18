@@ -11,7 +11,8 @@ Welcome to picast's documentation!
    :caption: Contents:
 
    introduction
-   authors
+   design
+   AUTHORS
    changes
 
 
