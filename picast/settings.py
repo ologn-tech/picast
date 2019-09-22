@@ -17,6 +17,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+import logging
+import os
 
 
 class Settings:
@@ -50,7 +52,7 @@ class Settings:
             },
             'file':{
                 'level':'DEBUG',
-                'class':'picast.loghandler.PicastFileHandler',
+                'class':'picast.settings.PicastFileHandler',
             }
         },
         'loggers': {
@@ -68,3 +70,10 @@ class Settings:
     }
 
 
+class PicastFileHandler(logging.FileHandler):
+
+    def __init__(self):
+        path = '/var/log/picast'
+        fileName = 'picast.log'
+        mode = 'a'
+        super(PicastFileHandler, self).__init__(os.path.join(path, fileName), mode)
