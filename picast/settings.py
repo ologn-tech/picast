@@ -48,10 +48,14 @@ class Settings:
                 'class':'logging.StreamHandler',
                 'formatter': 'simple'
             },
+            'file':{
+                'level':'DEBUG',
+                'class':'picast.loghandler.PicastFileHandler',
+            }
         },
         'loggers': {
             'picast': {
-                'handlers':['console'],
+                'handlers':['console', 'file'],
                 'propagate': True,
                 'level':'DEBUG',
             },
