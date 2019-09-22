@@ -18,14 +18,19 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import enum
+import json
+import re
 import subprocess
-from typing import List, Tuple
+from logging import getLogger
+from typing import List, Tuple, Optional
+
+from picast.settings import Settings
 
 
 class Res:
 
-    def __init__(self, id:int, width:int, height:int, refresh:int, progressive:bool=True, h264level:str='3.1', h265level:str='3.1'):
-        self.id = id
+    def __init__(self, width:int, height:int, refresh:int, progressive:bool=True, h264level:str='3.1', h265level:str='3.1'):
         self.width = width
         self.height = height
         self.refresh = refresh
@@ -38,11 +43,11 @@ class Res:
         return self.width * self.height * self.refresh * (1 + 1 if self.progressive else 0)
 
     def __repr__(self):
-        return "%s(%d,%d,%d,%d,%s)" % (type(self).__name__, self.id, self.width, self.height, self.refresh,
+        return "%s(%d,%d,%d,%s)" % (type(self).__name__, self.width, self.height, self.refresh,
                                        'p' if self.progressive else 'i')
 
     def __str__(self):
-        return 'resolution(%d) %d x %d x %d%s' % (self.id, self.width, self.height, self.refresh,
+        return 'resolution %d x %d x %d%s' % (self.width, self.height, self.refresh,
                                                   'p' if self.progressive else 'i')
 
     def __eq__(self, other):
@@ -64,84 +69,126 @@ class Res:
         return self.score < other.score
 
 
+class HdmiMode:
+
+    def __init__(self, vesa, cea):
+        if vesa is None and cea is None:
+            self.group = None
+            self.mode = None
+        elif vesa is None:
+            self.group = 'cea'
+            self.mode = cea
+        elif cea is None:
+            self.group = 'vesa'
+            self.mode = vesa
+        else:  # priority on vesa
+            self.group = 'vesa'
+            self.mode = vesa
+
+
+class ResolutionSet:
+
+    resolutions = {}
+
+    def __init__(self, *args):
+        for r in args:
+            if r[1] == 'cea' or r[1] == 'vesa' or r[1] == 'hh':
+                    self.resolutions[r[0]] = {r[1]: r[2], 'hdmi': HdmiMode(r[3], r[4])}
+            else:
+                raise ValueError('Unknown resolution type.')
+
+    def _get(self, mode, code) -> Optional[int]:
+        for r in self.resolutions:
+            if r['hdmi'] is not None:
+                hdmi: HdmiMode = r['hdmi']
+                if hdmi.group  == mode and hdmi.mode == code:
+                    if mode in r:
+                        return r[mode]
+                    else:
+                        return None
+        return None
+
+    def get_cea(self, code) -> Optional[int]:
+        self._get('cea', code)
+
+    def get_vesa(self, code) -> Optional[int]:
+        self._get('vesa', code)
+
+
 class WfdVideoParameters:
 
-    resolutions_cea = [
-        Res(0,   640,  480, 60, True),
-        Res(1,   720,  480, 60, True),
-        Res(2,   720,  480, 60, False),
-        Res(3,   720,  480, 50, True),
-        Res(4,   720,  576, 50, False),
-        Res(5,  1280,  720, 30, True),
-        Res(6,  1280,  720, 60, True, '3.2', '4'),
-        Res(7,  1280, 1080, 30, True, '4', '4'),
-        Res(8,  1920, 1080, 60, True, '4.2', '4.1'),
-        Res(9,  1920, 1080, 60, False, '4', '4'),
-        Res(10, 1280,  720, 25, True),
-        Res(11, 1280,  720, 50, True, '3.2', '4'),
-        Res(12, 1920, 1080, 25, True, '3.2', '4'),
-        Res(13, 1920, 1080, 50, True, '4.2', '4.1'),
-        Res(14, 1920, 1080, 50, False, '3.2', '4'),
-        Res(15, 1280,  720, 24, True),
-        Res(16, 1920, 1080, 24, True, '3.2', '4'),
-        Res(17, 3840, 2160, 30, True, '5.1', '5'),
-        Res(18, 3840, 2160, 60, True, '5.1', '5'),
-        Res(19, 4096, 2160, 30, True, '5.1', '5'),
-        Res(20, 4096, 2160, 60, True, '5.2', '5.1'),
-        Res(21, 3840, 2160, 25, True, '5.2', '5.1'),
-        Res(22, 3840, 2160, 50, True, '5.2', '5'),
-        Res(23, 4096, 2160, 25, True, '5.2', '5'),
-        Res(24, 4086, 2160, 50, True, '5.2', '5'),
-        Res(25, 4096, 2160, 24, True, '5.2', '5.1'),
-        Res(26, 4096, 2160, 24, True, '5.2', '5.1'),
-    ]
-
-    resolutions_vesa = [
-        Res(0,   800,  600, 30, True, '3.1', '3.1'),
-        Res(1,   800,  600, 60, True, '3.2', '4'),
-        Res(2,  1024,  768, 30, True, '3.1', '3.1'),
-        Res(3,  1024,  768, 60, True, '3.2', '4'),
-        Res(4,  1152,  854, 30, True, '3.2', '4'),
-        Res(5,  1152,  854, 60, True, '4', '4.1'),
-        Res(6,  1280,  768, 30, True, '3.2', '4'),
-        Res(7,  1280,  768, 60, True, '4', '4.1'),
-        Res(8,  1280,  800, 30, True, '3.2', '4'),
-        Res(9,  1280,  800, 60, True, '4', '4.1'),
-        Res(10, 1360,  768, 30, True, '3.2', '4'),
-        Res(11, 1360,  768, 60, True, '4', '4.1'),
-        Res(12, 1366,  768, 30, True, '3.2', '4'),
-        Res(13, 1366,  768, 60, True, '4.2', '4.1'),
-        Res(14, 1280, 1024, 30, True, '3.2', '4'),
-        Res(15, 1280, 1024, 60, True, '4.2', '4.1'),
-        Res(16, 1440, 1050, 30, True, '3.2', '4'),
-        Res(17, 1440, 1050, 60, True, '4.2', '4.1'),
-        Res(18, 1440,  900, 30, True, '3.2', '4'),
-        Res(19, 1440,  900, 60, True, '4.2', '4.1'),
-        Res(20, 1600,  900, 30, True, '3.2', '4'),
-        Res(21, 1600,  900, 60, True, '4.2', '4.1'),
-        Res(22, 1600, 1200, 30, True, '4', '5'),
-        Res(23, 1600, 1200, 60, True, '4.2', '5.1'),
-        Res(24, 1680, 1024, 30, True, '3.2', '4'),
-        Res(25, 1680, 1024, 60, True, '4.2', '4.1'),
-        Res(26, 1680, 1050, 30, True, '3.2', '4'),
-        Res(27, 1680, 1050, 60, True, '4.2', '4.1'),
-        Res(28, 1920, 1200, 30, True, '4.2', '5'),
-    ]
-
-    resolutions_hh = [
-        Res(0, 800, 400, 30),
-        Res(1, 800, 480, 60),
-        Res(2, 854, 480, 30),
-        Res(3, 854, 480, 60),
-        Res(4, 864, 480, 30),
-        Res(5, 864, 480, 60),
-        Res(6, 640, 360, 30),
-        Res(7, 640, 360, 60),
-        Res(8, 960, 540, 30),
-        Res(9, 960, 540, 60),
-        Res(10, 848, 480, 30),
-        Res(11, 848, 480, 60),
-    ]
+    def __init__(self):
+        self.resolutions = ResolutionSet([
+            # (res, (cea or vesa), hdmi_mode(vesa), hdmi(cea)
+            (Res(640, 480, 60, True), 'cea', 0, 4, 1),
+            (Res(720, 480, 60, True), 'cea', 1, None, 3),
+            (Res(720, 480, 60, False), 'cea', 2, None, 7),
+            (Res(720, 480, 50, True), 'cea', 3, None, None),
+            (Res(720, 576, 50, False), 'cea', 4, None, 17),
+            (Res(1280, 720, 30, True), 'cea', 5, None, None),
+            (Res(1280, 720, 60, True, '3.2', '4'), 'cea', 6, None, 4),
+            (Res(1280, 1080, 30, True, '4', '4'), 'cea', 7, None, 34),
+            (Res(1920, 1080, 60, True, '4.2', '4.1'), 'cea', 8, None, 16),
+            (Res(1920, 1080, 60, False, '4', '4'), 'cea', 9, None, 5),
+            (Res(1280,  720, 25, True), 'cea', 10, None, None),
+            (Res(1280,  720, 50, True, '3.2', '4'), 'cea', 11, None, 19),
+            (Res(1920, 1080, 25, True, '3.2', '4'), 'cea', 12, None, None),
+            (Res(1920, 1080, 50, True, '4.2', '4.1'), 'cea', 13, None, 31),
+            (Res(1920, 1080, 50, False, '3.2', '4'), 'cea', 14, None, 20),
+            (Res(1280,  720, 24, True), 'cea', 15, None, None),
+            (Res(1920, 1080, 24, True, '3.2', '4'), 'cea', 16, None, 32),
+            (Res(3840, 2160, 30, True, '5.1', '5'), 'cea', 17, None, None),
+            (Res(3840, 2160, 60, True, '5.1', '5'), 'cea', 18, None, None),
+            (Res(4096, 2160, 30, True, '5.1', '5'), 'cea', 19, None, None),
+            (Res(4096, 2160, 60, True, '5.2', '5.1'), 'cea', 20, None, None),
+            (Res(3840, 2160, 25, True, '5.2', '5.1'), 'cea', 21, None, None),
+            (Res(3840, 2160, 50, True, '5.2', '5'), 'cea', 22, None, None),
+            (Res(4096, 2160, 25, True, '5.2', '5'), 'cea', 23, None, None),
+            (Res(4086, 2160, 50, True, '5.2', '5'), 'cea', 24, None, None),
+            (Res(4096, 2160, 24, True, '5.2', '5.1'), 'cea', 25, None, None),
+            (Res(4096, 2160, 24, True, '5.2', '5.1'), 'cea', 26, None, None),
+            (Res(800,  600, 30, True, '3.1', '3.1'), 'vesa', 0, None, None),
+            (Res(800,  600, 60, True, '3.2', '4'),'vesa', 1, 9, None),
+            (Res(1024,  768, 30, True, '3.1', '3.1'), 'vesa', 2, 16, None),
+            (Res(1024,  768, 60, True, '3.2', '4'), 'vesa', 3, None, None),
+            (Res(1152,  854, 30, True, '3.2', '4'), 'vesa', 4, None, None),
+            (Res(1152,  854, 60, True, '4', '4.1'), 'vesa', 5, None, None),
+            (Res(1280,  768, 30, True, '3.2', '4'), 'vesa', 6, None, None),
+            (Res(1280,  768, 60, True, '4', '4.1'), 'vesa', 7, None, None),
+            (Res(1280,  800, 30, True, '3.2', '4'), 'vesa', 8, None, None),
+            (Res(1280,  800, 60, True, '4', '4.1'), 'vesa', 9, None, None),
+            (Res(1360,  768, 30, True, '3.2', '4'), 'vesa', 10, None, None),
+            (Res(1360,  768, 60, True, '4', '4.1'), 'vesa', 11, 39, None),
+            (Res(1366,  768, 30, True, '3.2', '4'), 'vesa', 12, None, None),
+            (Res(1366,  768, 60, True, '4.2', '4.1'), 'vesa', 13, None, None),
+            (Res(1280, 1024, 30, True, '3.2', '4'), 'vesa', 14, None, None),
+            (Res(1280, 1024, 60, True, '4.2', '4.1'), 'vesa', 15, 35, None),
+            (Res(1440, 1050, 30, True, '3.2', '4'), 'vesa', 16, None, None),
+            (Res(1440, 1050, 60, True, '4.2', '4.1'), 'vesa', 17, None, None),
+            (Res(1440,  900, 30, True, '3.2', '4'), 'vesa', 18, None, None),
+            (Res(1440,  900, 60, True, '4.2', '4.1'), 'vesa', 19, 47, None),
+            (Res(1600,  900, 30, True, '3.2', '4'), 'vesa', 20, None, None),
+            (Res(1600,  900, 60, True, '4.2', '4.1'), 'vesa', 21, 83, None),
+            (Res(1600, 1200, 30, True, '4', '5'), 'vesa', 22, None, None),
+            (Res(1600, 1200, 60, True, '4.2', '5.1'), 'vesa', 23, 51, None),
+            (Res(1680, 1024, 30, True, '3.2', '4'), 'vesa', 24, None, None),
+            (Res(1680, 1024, 60, True, '4.2', '4.1'),'vesa', 25, None, None),
+            (Res(1680, 1050, 30, True, '3.2', '4'), 'vesa', 26, None, None),
+            (Res(1680, 1050, 60, True, '4.2', '4.1'), 'vesa', 27, 58, None),
+            (Res(1920, 1200, 30, True, '4.2', '5'), 'vesa', 28, None, None),
+            (Res(800, 400, 30), 'hh', 0, None, None),
+            (Res(800, 480, 60), 'hh', 1, None, None),
+            (Res(854, 480, 30), 'hh', 2, None, None),
+            (Res(854, 480, 60), 'hh', 3, None, 3),
+            (Res(864, 480, 30), 'hh', 4, None, None),
+            (Res(864, 480, 60), 'hh', 5, None, None),
+            (Res(640, 360, 30), 'hh', 6, None, None),
+            (Res(640, 360, 60), 'hh', 7, None, None),
+            (Res(960, 540, 30), 'hh', 8, None, None),
+            (Res(960, 540, 60), 'hh', 9, None, None),
+            (Res(848, 480, 30), 'hh', 10, None, None),
+            (Res(848, 480, 60), 'hh', 11, None, None),
+        ])
 
     def get_video_parameter(self) -> str:
         # audio_codec: LPCM:0x01, AAC:0x02, AC3:0x04
@@ -162,55 +209,48 @@ class WfdVideoParameters:
         preferred = 0
         profile = 0x02 | 0x01
         level = 0x02
-        dev_cea, dev_vesa = self.get_display_resolutions()
-        cea = 0
-        for r in dev_cea:
-            cea |= 1 << r.id
-        vesa = 0
-        for r in dev_vesa:
-            vesa |= 1 << r.id
-        handheld = 0x0
+        cea, vesa, hh = self.get_display_resolutions()
         msg += 'wfd_video_formats: {0:02X} {1:02X} {2:02X} {3:02X} {4:08X} {5:08X} {6:08X} 00 0000 0000 00 none none\r\n' \
-               .format(native, preferred, profile, level, cea, vesa, handheld)
+               .format(native, preferred, profile, level, cea, vesa, hh)
         msg += 'wfd_3d_video_formats: none\r\nwfd_coupled_sink: none\r\nwfd_display_edid: none\r\nwfd_connector_type: 05\r\n'
         msg += 'wfd_uibc_capability: none\r\nwfd_standby_resume_capability: none\r\nwfd_content_protection: none\r\n'
         return msg
 
+    class TvModes(enum.Enum):
+        CEA = "-m CEA -j"
+        DMT = "-m DMT -j"
+        Current = "-s"
 
-    def retrieve_xrandr(self) -> str:
-        return subprocess.Popen("xrandr | egrep -oh '[0-9]+x[0-9]+\s+[0-9]+\.[0-9]+'",
-                                shell=True, stdout=subprocess.PIPE).communicate()[0]
+    def retrieve_tvservice(self, mode: TvModes) -> dict:
+        logger = getLogger(Settings.logger)
+        if mode is self.TvModes.Current:
+            data = subprocess.Popen("tvservice -s", shell=True, stdout=subprocess.PIPE).communicate()[0]
+            logger.debug("tvservice: {}".format(data))
+            r = re.compile(r'([0-9]+)x([0-9]+),\s+@\s+([1-9][0-9])\.[0-9][0-9]HZ')
+            m = r.match(data)
+            status = {'width': m.group(1), 'height': m.group(2), 'rate': m.group(3)}
+        elif mode is self.TvModes.CEA:
+            data = subprocess.Popen("tvservice -m CEA -j", shell=True, stdout=subprocess.PIPE).communicate()[0]
+            logger.debug("tvservice: {}".format(data))
+            status = json.loads(data)
+        else:
+            data = subprocess.Popen("tvservice -m DMT -j", shell=True, stdout=subprocess.PIPE).communicate()[0]
+            logger.debug("tvservice: {}".format(data))
+            status = json.load(data)
+        return status
 
-    def get_display_resolutions(self) -> Tuple[List[Res], List[Res]]:
-        cea = []
-        vesa = []
-        output = self.retrieve_xrandr().split(b"\n")
-        for r in output:
-            if r != b'':
-                ores, oref = r.split()
-                res = ores.decode('ascii')
-                ref = oref.decode('ascii')
-                if 58.0 < float(ref) < 62.0:
-                    ref = 60
-                elif 28.0 < float(ref) < 32.0:
-                    ref = 30
-                else:
-                    ref = 24
-                x , y = res.split('x')
-                found = False
-                for res in self.resolutions_cea:
-                    if not res.progressive:
-                        continue
-                    if (res.width, res.height, res.refresh) == (int(x), int(y), ref):
-                        cea.append(res)
-                        found = True
-                        break
-                if found:
-                    continue
-                for res in self.resolutions_vesa:
-                    if not res.progressive:
-                        continue
-                    if (res.width, res.height, res.refresh) == (int(x), int(y), ref):
-                        vesa.append(res)
-                        break
-        return cea, vesa
+    def get_display_resolutions(self) -> Tuple[int, int, int]:
+        cea = 0x01
+        vesa = 0x00
+        hh =  0x00
+        cea_resolutions = self.retrieve_tvservice(mode=self.TvModes.CEA)
+        for r in cea_resolutions:
+            cea = self.resolutions.get_cea(code=r['code'])
+            if cea is not None:
+                cea |= 1 << cea
+        dmt_resolutions = self.retrieve_tvservice(mode=self.TvModes.DMT)
+        for r in dmt_resolutions:
+            dmt = self.resolutions.get_vesa(code=r['code'])
+            if dmt is not None:
+                vesa |= 1 << dmt
+        return cea, vesa, hh
