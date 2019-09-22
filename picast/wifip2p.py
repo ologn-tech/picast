@@ -33,8 +33,8 @@ class WifiP2PServer(threading.Thread):
 
     def __init__(self):
         super(WifiP2PServer, self).__init__(name='wifi-p2p-0', daemon=False)
-        self.set_p2p_interface()
         self.logger = getLogger(Settings.logger)
+        self.set_p2p_interface()
 
     def run(self):
         self.start_dhcpd()
