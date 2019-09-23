@@ -105,6 +105,7 @@ def test_devinfo(monkeypatch):
 
 
 def _tvservice_mock(cmd):
+    """Return actual modes retrieved from Raspberry Pi Zero WH with FHD monitor."""
     if cmd == "tvservice -m CEA -j":
         return '[{ "code":1, "width":640, "height":480, "rate":60, "aspect_ratio":"4:3", "scan":"p", "3d_modes":[] },' \
                ' { "code":2, "width":720, "height":480, "rate":60, "aspect_ratio":"4:3", "scan":"p", "3d_modes":[] },' \
