@@ -21,15 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import configparser
 import os
 import threading
-from logging import FileHandler
-
-
-class PicastFileHandler(FileHandler):
-    def __init__(self):
-        path = '/var/log/picast'
-        fileName = 'picast.log'
-        mode = 'a'
-        super(PicastFileHandler, self).__init__(os.path.join(path, fileName), mode)
 
 
 class Settings():
@@ -49,8 +40,10 @@ class Settings():
             with self._lock:
                 if self._config is None:
                     if config is None:
-                        inifile = os.path.join(os.path.dirname(__file__), 'defaults.ini')
+                        inidir = os.path.dirname(__file__)
+                        inifile = os.path.join(inidir, 'settings.ini')
                     else:
+                        inidir = os.path.dirname(config)
                         inifile = config
                     self._config = self.configParse(inifile)
 

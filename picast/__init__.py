@@ -38,9 +38,8 @@ from picast.wifip2p import WifiP2PServer
 
 
 def main():
-    config = Settings()
-    logging_config = config.logging_config
-    LoggingConfig.fileConfig(logging_config)
+    config = Settings() # should call first: load configurations from ini files
+    LoggingConfig.fileConfig(config.logging_config)
 
     wifip2p = WifiP2PServer()
     wifip2p.start()
@@ -51,6 +50,8 @@ def main():
     picast = PiCast(player=player)
     picast.start()
     picast.join()
+
+    sleep(30)  # show error message 30 sec. before close.
     return 0
 
 

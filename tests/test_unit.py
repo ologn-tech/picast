@@ -1,5 +1,5 @@
-import configparser
 import os
+from logging import config as LoggingConfig
 
 from picast.settings import Settings
 from picast.video import WfdVideoParameters
@@ -7,6 +7,11 @@ from picast.wifip2p import WifiP2PServer
 from picast.wpacli import WpaCli
 
 import pytest
+
+
+@pytest.mark.unit
+def test_logging_config():
+    LoggingConfig.fileConfig(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'picast', 'logging.ini'))
 
 
 @pytest.mark.unit
