@@ -100,4 +100,4 @@ class Settings():
 
     @property
     def rtsp_port(self):
-        return self._config.getint('', 'rtsp_port')
+        return self._config.getint('network', 'rtsp_port')

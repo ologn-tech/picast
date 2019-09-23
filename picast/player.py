@@ -38,7 +38,7 @@ class GstPlayer(Gtk.Window):
         self.config = Settings()
         self.logger = getLogger(logger)
         Gst.init(None)
-        gstcommand = "udpsrc port={0:d} caps=\"application/x-rtp, media=video\" ".format(config.rtp_port)
+        gstcommand = "udpsrc port={0:d} caps=\"application/x-rtp, media=video\" ".format(self.config.rtp_port)
         gstcommand += "! rtph264depay ! omxh264dec ! videoconvert ! autovideosink"
         self.pipeline = Gst.parse_launch(gstcommand)
         self.bus = self.pipeline.get_bus()

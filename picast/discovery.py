@@ -26,7 +26,7 @@ from picast.settings import Settings
 class ServiceDiscovery():
     """Register and query mDNS/SD entries"""
 
-    def __init__(self, config=None):
+    def __init__(self):
         self.config = Settings()
         self.zc = zeroconf.Zeroconf()
 

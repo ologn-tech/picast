@@ -39,8 +39,8 @@ from picast.wifip2p import WifiP2PServer
 
 def main():
     # it should call first: load configurations from ini files
-    config = Settings()  # FIXME: Should support specify custom config from command line
-    LoggingConfig.fileConfig(config.logging_config)
+    Settings()  # FIXME: Should support specify custom config from command line
+    LoggingConfig.fileConfig(os.path.join(os.path.dirname(__file__), 'logging.ini'))
 
     wifip2p = WifiP2PServer()
     wifip2p.start()

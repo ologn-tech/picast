@@ -230,8 +230,8 @@ class PiCast(threading.Thread):
             sd.register()
             self.logger.debug("Register mDNS/SD entry.")
             self.logger.info("Start connecting...")
-            if self.connect(sock, self.config['peeraddress'], self.config['rtsp_port']):
-                self.logger.debug("Connected to Wfd-source in {}.".format(self.config['peeraddress']))
+            if self.connect(sock, self.config.peeraddress, self.config.rtsp_port):
+                self.logger.debug("Connected to Wfd-source in {}.".format(self.config.peeraddress))
                 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as idrsock:
                     idrsock_address = ('127.0.0.1', 0)
                     idrsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
