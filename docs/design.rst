@@ -21,7 +21,7 @@ Modules
 
 - `picast.player` provide a RTP movie and audio player, supporting H.264 and AC3/AAC/LPCM audio codecs.
 
-- `picast.settings` is a place to configure an application.
+- `picast.settings` is an ini file loader and configration provider.
 
 - `picast.video` checks platform and provide proper wfd-video-formats parameter for miracast negotiation.
 

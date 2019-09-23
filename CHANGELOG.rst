@@ -20,8 +20,8 @@ Changed
 -------
 - Show UI with gtk3.
 - Use gstreamer for player.
-- Use oxmplayer for rtp player.
 - wfd_video_formats: update native-resolution.
+- Use JSON and INI files for configurations.
 
 Fixed
 -----
