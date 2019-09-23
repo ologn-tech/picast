@@ -102,3 +102,66 @@ def test_devinfo(monkeypatch):
     monkeypatch.setattr(WifiP2PServer, "set_p2p_interface", mockreturn)
     p2p = WifiP2PServer()
     assert  p2p.wfd_devinfo() == '00060151022a012c'
+
+
+def _tvservice_mock(cmd):
+    if cmd == "tvservice -m CEA -j":
+        return '[{ "code":1, "width":640, "height":480, "rate":60, "aspect_ratio":"4:3", "scan":"p", "3d_modes":[] },' \
+               ' { "code":2, "width":720, "height":480, "rate":60, "aspect_ratio":"4:3", "scan":"p", "3d_modes":[] },' \
+               ' { "code":3, "width":720, "height":480, "rate":60, "aspect_ratio":"16:9", "scan":"p", "3d_modes":[] },' \
+               ' { "code":4, "width":1280, "height":720, "rate":60, "aspect_ratio":"16:9", "scan":"p", "3d_modes":[] },' \
+               ' { "code":16, "width":1920, "height":1080, "rate":60, "aspect_ratio":"16:9", "scan":"p", "3d_modes":[] }, ' \
+               '{ "code":32, "width":1920, "height":1080, "rate":24, "aspect_ratio":"16:9", "scan":"p", "3d_modes":[] }, ' \
+               '{ "code":34, "width":1920, "height":1080, "rate":30, "aspect_ratio":"16:9", "scan":"p", "3d_modes":[] } ]'
+    elif cmd == "tvservice -m DMT -j":
+        return '[{ "code":4, "width":640, "height":480, "rate":60, "aspect_ratio":"4:3", "scan":"p", "3d_modes":[] },' \
+               ' { "code":9, "width":800, "height":600, "rate":60, "aspect_ratio":"4:3", "scan":"p", "3d_modes":[] },' \
+               ' { "code":16, "width":1024, "height":768, "rate":60, "aspect_ratio":"4:3", "scan":"p", "3d_modes":[] },' \
+               ' { "code":35, "width":1280, "height":1024, "rate":60, "aspect_ratio":"5:4", "scan":"p", "3d_modes":[] },' \
+               ' { "code":83, "width":1600, "height":900, "rate":60, "aspect_ratio":"16:9", "scan":"p", "3d_modes":[] },' \
+               ' { "code":85, "width":1280, "height":720, "rate":60, "aspect_ratio":"16:9", "scan":"p", "3d_modes":[] }]'
+    else:
+        return None
+
+@pytest.mark.unit
+def test_tvservice_cea(monkeypatch):
+    def mockreturn(self, cmd):
+        return _tvservice_mock(cmd)
+    monkeypatch.setattr(WfdVideoParameters, "_call_tvservice", mockreturn)
+    v = WfdVideoParameters()
+    param = v.retrieve_tvservice(WfdVideoParameters.TvModes.CEA)
+    assert param[0]["code"] == 1
+    assert param[1]["width"] == 720
+
+
+@pytest.mark.unit
+def test_tvservice_dmt(monkeypatch):
+    def mockreturn(self, cmd):
+        return _tvservice_mock(cmd)
+    monkeypatch.setattr(WfdVideoParameters, "_call_tvservice", mockreturn)
+    v = WfdVideoParameters()
+    param = v.retrieve_tvservice(WfdVideoParameters.TvModes.DMT)
+    assert param[0]["code"] == 4
+    assert param[1]["width"] == 800
+
+
+@pytest.mark.unit
+def test_load_resolutons_json():
+    v = WfdVideoParameters()
+    assert v.resolutions['cea'] is not None
+    assert v.resolutions['vesa'] is not None
+    assert len(v.resolutions['cea']) == 12
+    assert len(v.resolutions['vesa']) == 8
+
+
+@pytest.mark.unit
+def test_get_display_resolution(monkeypatch):
+    def mockreturn(self, cmd):
+        return _tvservice_mock(cmd)
+    monkeypatch.setattr(WfdVideoParameters, "_call_tvservice", mockreturn)
+    v = WfdVideoParameters()
+    cea, vesa, hh = v.get_display_resolutions()
+    assert cea == 0x0101C3
+    assert vesa == 0x0208006
+    assert hh == 0x00
+

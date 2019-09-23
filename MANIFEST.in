@@ -12,4 +12,5 @@ recursive-include docs *.rst
 recursive-include docs *.txt
 recursive-include docs Makefile
 recursive-include picast *.ini
+recursive-include picast *.json
 recursive-include tests *.py
