@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 import sys
-from logging import config
+from logging import config as LoggingConfig
 from time import sleep
 
 import gi
@@ -38,7 +38,9 @@ from picast.wifip2p import WifiP2PServer
 
 
 def main():
-    config.dictConfig(Settings.log_config)
+    config = Settings()
+    logging_config = config.logging_config
+    LoggingConfig.fileConfig(logging_config)
 
     wifip2p = WifiP2PServer()
     wifip2p.start()
@@ -46,7 +48,7 @@ def main():
     sleep(3)
 
     player = GstPlayer()
-    picast = PiCast(player)
+    picast = PiCast(player=player)
     picast.start()
     picast.join()
     return 0

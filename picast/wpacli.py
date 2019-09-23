@@ -24,7 +24,6 @@ from logging import getLogger
 from typing import List, Tuple, Optional
 
 from picast.picast import PiCastException
-from picast.settings import Settings
 
 
 class WpaCli:
@@ -32,8 +31,8 @@ class WpaCli:
     Wraps the wpa_cli command line interface.
     """
 
-    def __init__(self):
-        self.logger = getLogger(Settings.logger)
+    def __init__(self, logger='picast'):
+        self.logger = getLogger(logger)
         pass
 
     def cmd(self, *argv):

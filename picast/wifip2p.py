@@ -31,9 +31,10 @@ from picast.wpacli import WpaCli
 
 class WifiP2PServer(threading.Thread):
 
-    def __init__(self):
+    def __init__(self, logger='picast'):
         super(WifiP2PServer, self).__init__(name='wifi-p2p-0', daemon=False)
-        self.logger = getLogger(Settings.logger)
+        self.config = Settings()
+        self.logger = getLogger(logger)
         self.set_p2p_interface()
 
     def run(self):
@@ -42,7 +43,7 @@ class WifiP2PServer(threading.Thread):
 
     def start_wps(self):
         wpacli = WpaCli()
-        wpacli.set_wps_pin(self.wlandev, Settings.pin, Settings.timeout)
+        wpacli.set_wps_pin(self.wlandev, self.config.pin, self.config.timeout)
 
     def start_dhcpd(self):
         dhcpd = Dhcpd(self.wlandev)
@@ -79,15 +80,15 @@ class WifiP2PServer(threading.Thread):
     def create_p2p_interface(self):
         wpacli = WpaCli()
         wpacli.start_p2p_find()
-        wpacli.set_device_name(Settings.wp_device_name)
-        wpacli.set_device_type(Settings.wp_device_type)
+        wpacli.set_device_name(self.config.device_name)
+        wpacli.set_device_type(self.config.device_type)
         wpacli.set_p2p_go_ht40()
         wpacli.wfd_subelem_set(0, self.wfd_devinfo())
         wpacli.wfd_subelem_set(1, self.wfd_bssid(0))
         wpacli.wfd_subelem_set(6, self.wfd_sink_info(0, 0))
         wpacli.wfd_subelem_set(7, self.wfd_ext_cap(uibc=False, i2c=False))
         wpacli.wfd_subelem_set(11, self.wfd_devinfo2())
-        wpacli.p2p_group_add(Settings.wp_group_name)
+        wpacli.p2p_group_add(self.config.group_name)
 
     def set_p2p_interface(self):
         wpacli = WpaCli()
@@ -100,6 +101,6 @@ class WifiP2PServer(threading.Thread):
             p2p_interface = wpacli.get_p2p_interface()
             if p2p_interface is None:
                 raise PiCastException("Can not create P2P Wifi interface.")
-            self.logger.info("Start p2p interface: {} address {}".format(p2p_interface, Settings.myaddress))
-            os.system("sudo ifconfig {} {}".format(p2p_interface, Settings.myaddress))
+            self.logger.info("Start p2p interface: {} address {}".format(p2p_interface, self.config.myaddress))
+            os.system("sudo ifconfig {} {}".format(p2p_interface, self.config.myaddress))
         self.wlandev = p2p_interface

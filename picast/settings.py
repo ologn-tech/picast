@@ -17,63 +17,94 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-import logging
+
+import configparser
 import os
+import threading
+from logging import FileHandler
 
 
-class Settings:
-    wp_device_name = 'picast'
-    wp_device_type = "7-0050F204-1"
-    wp_group_name = 'persistent'
-    pin = '12345678'
-    timeout = 300
-    rtsp_port = 7236
-    rtp_port = 1028
-    myaddress = '192.168.173.1'
-    peeraddress = '192.168.173.80'
-    netmask = '255.255.255.0'
-    logger = 'picast'
-    log_config = {
-        'version': 1,
-        'disable_existing_loggers': False,
-        'formatters': {
-            'verbose': {
-                'format': '%(levelname)s %(asctime)s %(module)s %(thread)d %(message)s'
-            },
-            'simple': {
-                'format': '%(levelname)s %(message)s'
-            },
-        },
-        'handlers': {
-            'console':{
-                'level':'DEBUG',
-                'class':'logging.StreamHandler',
-                'formatter': 'simple'
-            },
-            'file':{
-                'level':'DEBUG',
-                'class':'picast.settings.PicastFileHandler',
-            }
-        },
-        'loggers': {
-            'picast': {
-                'handlers':['console', 'file'],
-                'propagate': True,
-                'level':'DEBUG',
-            },
-            'root': {
-                'handlers': ['console'],
-                'level': 'DEBUG'
-            },
-        }
-
-    }
-
-
-class PicastFileHandler(logging.FileHandler):
-
+class PicastFileHandler(FileHandler):
     def __init__(self):
         path = '/var/log/picast'
         fileName = 'picast.log'
         mode = 'a'
         super(PicastFileHandler, self).__init__(os.path.join(path, fileName), mode)
+
+
+class Settings():
+    # this class is Borg/Singleton
+    _shared_state = {
+        '_config': None,
+        '_lock': threading.Lock()
+    }
+
+    def __new__(cls, *p, **k):
+        self = object.__new__(cls, *p, **k)
+        self.__dict__ = cls._shared_state
+        return self
+
+    def __init__(self, config=None):
+        if self._config is None:
+            with self._lock:
+                if self._config is None:
+                    if config is None:
+                        inifile = os.path.join(os.path.dirname(__file__), 'defaults.ini')
+                    else:
+                        inifile = config
+                    self._config = self.configParse(inifile)
+
+    def configParse(self, file_path) :
+        if not os.path.exists(file_path) :
+            raise IOError(file_path)
+        config = configparser.ConfigParser()
+        config.read(file_path)
+        return config
+
+    @property
+    def logging_config(self):
+        return self._config.get('logging', 'config')
+
+    @property
+    def logger(self):
+        return self._config.get('logging', 'logger')
+
+    @property
+    def rtp_port(self):
+        return self._config.getint('network', 'rtp_port')
+
+    @property
+    def myaddress(self):
+        return self._config.get('network', 'myaddress')
+
+    @property
+    def peeraddress(self):
+        return self._config.get('network', 'peeraddress')
+
+    @property
+    def netmask(self):
+        return self._config.get('network', 'netmask')
+
+    @property
+    def pin(self):
+        return self._config.get('p2p', 'pin')
+
+    @property
+    def timeout(self):
+        return self._config.getint('p2p', 'timeout')
+
+    @property
+    def group_name(self):
+        return self._config.get('p2p', 'group_name')
+
+    @property
+    def device_type(self):
+        return self._config.get('p2p', 'device_type')
+
+    @property
+    def device_name(self):
+        return self._config.get('p2p', 'device_name')
+
+    @property
+    def rtsp_port(self):
+        return self._config.getint('', 'rtsp_port')

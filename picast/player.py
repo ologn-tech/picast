@@ -34,10 +34,11 @@ from picast.settings import Settings
 
 
 class GstPlayer(Gtk.Window):
-    def __init__(self):
-        self.logger = getLogger(Settings.logger)
+    def __init__(self, logger='picast'):
+        self.config = Settings()
+        self.logger = getLogger(logger)
         Gst.init(None)
-        gstcommand = "udpsrc port={0:d} caps=\"application/x-rtp, media=video\" ".format(Settings.rtp_port)
+        gstcommand = "udpsrc port={0:d} caps=\"application/x-rtp, media=video\" ".format(config.rtp_port)
         gstcommand += "! rtph264depay ! omxh264dec ! videoconvert ! autovideosink"
         self.pipeline = Gst.parse_launch(gstcommand)
         self.bus = self.pipeline.get_bus()

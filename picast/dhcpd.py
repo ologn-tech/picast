@@ -28,11 +28,12 @@ from picast.settings import Settings
 class Dhcpd():
     """DHCP server daemon running in background."""
 
-    def __init__(self, interface: str):
+    def __init__(self, interface: str, logger='picast'):
         """Constructor accept an interface to listen."""
+        self.config = Settings()
         self.dhcpd = None
         self.interface = interface
-        self.logger = getLogger(Settings.logger)
+        self.logger = getLogger(logger)
 
     def start(self):
         fd, self.conf_path = tempfile.mkstemp(suffix='.conf')

@@ -23,50 +23,9 @@ import json
 import re
 import subprocess
 from logging import getLogger
-from typing import List, Tuple, Optional
+from typing import Tuple, Optional
 
 from picast.settings import Settings
-
-
-class Res:
-
-    def __init__(self, width:int, height:int, refresh:int, progressive:bool=True, h264level:str='3.1', h265level:str='3.1'):
-        self.width = width
-        self.height = height
-        self.refresh = refresh
-        self.progressive = progressive
-        self.h264level = h264level
-        self.h265level = h265level
-
-    @property
-    def score(self) -> int:
-        return self.width * self.height * self.refresh * (1 + 1 if self.progressive else 0)
-
-    def __repr__(self):
-        return "%s(%d,%d,%d,%s)" % (type(self).__name__, self.width, self.height, self.refresh,
-                                       'p' if self.progressive else 'i')
-
-    def __str__(self):
-        return 'resolution %d x %d x %d%s' % (self.width, self.height, self.refresh,
-                                                  'p' if self.progressive else 'i')
-
-    def __eq__(self, other):
-        return repr(self) == repr(other)
-
-    def __ne__(self, other):
-        return repr(self) != repr(other)
-
-    def __ge__(self, other):
-        return self.score >= other.score
-
-    def __gt__(self, other):
-        return self.score > other.score
-
-    def __le__(self, other):
-        return self.score <= other.score
-
-    def __lt__(self, other):
-        return self.score < other.score
 
 
 class HdmiMode:
@@ -88,14 +47,15 @@ class HdmiMode:
 
 class ResolutionSet:
 
-    resolutions = {}
+    resolutions = []
 
-    def __init__(self, *args):
+    def __init__(self, args):
         for r in args:
-            if r[1] == 'cea' or r[1] == 'vesa' or r[1] == 'hh':
-                    self.resolutions[r[0]] = {r[1]: r[2], 'hdmi': HdmiMode(r[3], r[4])}
+            if r[4] == 'cea' or r[4] == 'vesa' or r[4] == 'hh':
+                    self.resolutions.append({'width': r[0], 'height': r[1], 'rate': r[2], 'p': r[3],
+                                             r[4]: r[5], 'hdmi': HdmiMode(r[6], r[7])})
             else:
-                raise ValueError('Unknown resolution type.')
+                raise ValueError('Unknown resolution type. {}')
 
     def _get(self, mode, code) -> Optional[int]:
         for r in self.resolutions:
@@ -118,76 +78,76 @@ class ResolutionSet:
 class WfdVideoParameters:
 
     def __init__(self):
+        self.config = Settings()
         self.resolutions = ResolutionSet([
-            # (res, (cea or vesa), hdmi_mode(vesa), hdmi(cea)
-            (Res(640, 480, 60, True), 'cea', 0, 4, 1),
-            (Res(720, 480, 60, True), 'cea', 1, None, 3),
-            (Res(720, 480, 60, False), 'cea', 2, None, 7),
-            (Res(720, 480, 50, True), 'cea', 3, None, None),
-            (Res(720, 576, 50, False), 'cea', 4, None, 17),
-            (Res(1280, 720, 30, True), 'cea', 5, None, None),
-            (Res(1280, 720, 60, True, '3.2', '4'), 'cea', 6, None, 4),
-            (Res(1280, 1080, 30, True, '4', '4'), 'cea', 7, None, 34),
-            (Res(1920, 1080, 60, True, '4.2', '4.1'), 'cea', 8, None, 16),
-            (Res(1920, 1080, 60, False, '4', '4'), 'cea', 9, None, 5),
-            (Res(1280,  720, 25, True), 'cea', 10, None, None),
-            (Res(1280,  720, 50, True, '3.2', '4'), 'cea', 11, None, 19),
-            (Res(1920, 1080, 25, True, '3.2', '4'), 'cea', 12, None, None),
-            (Res(1920, 1080, 50, True, '4.2', '4.1'), 'cea', 13, None, 31),
-            (Res(1920, 1080, 50, False, '3.2', '4'), 'cea', 14, None, 20),
-            (Res(1280,  720, 24, True), 'cea', 15, None, None),
-            (Res(1920, 1080, 24, True, '3.2', '4'), 'cea', 16, None, 32),
-            (Res(3840, 2160, 30, True, '5.1', '5'), 'cea', 17, None, None),
-            (Res(3840, 2160, 60, True, '5.1', '5'), 'cea', 18, None, None),
-            (Res(4096, 2160, 30, True, '5.1', '5'), 'cea', 19, None, None),
-            (Res(4096, 2160, 60, True, '5.2', '5.1'), 'cea', 20, None, None),
-            (Res(3840, 2160, 25, True, '5.2', '5.1'), 'cea', 21, None, None),
-            (Res(3840, 2160, 50, True, '5.2', '5'), 'cea', 22, None, None),
-            (Res(4096, 2160, 25, True, '5.2', '5'), 'cea', 23, None, None),
-            (Res(4086, 2160, 50, True, '5.2', '5'), 'cea', 24, None, None),
-            (Res(4096, 2160, 24, True, '5.2', '5.1'), 'cea', 25, None, None),
-            (Res(4096, 2160, 24, True, '5.2', '5.1'), 'cea', 26, None, None),
-            (Res(800,  600, 30, True, '3.1', '3.1'), 'vesa', 0, None, None),
-            (Res(800,  600, 60, True, '3.2', '4'),'vesa', 1, 9, None),
-            (Res(1024,  768, 30, True, '3.1', '3.1'), 'vesa', 2, 16, None),
-            (Res(1024,  768, 60, True, '3.2', '4'), 'vesa', 3, None, None),
-            (Res(1152,  854, 30, True, '3.2', '4'), 'vesa', 4, None, None),
-            (Res(1152,  854, 60, True, '4', '4.1'), 'vesa', 5, None, None),
-            (Res(1280,  768, 30, True, '3.2', '4'), 'vesa', 6, None, None),
-            (Res(1280,  768, 60, True, '4', '4.1'), 'vesa', 7, None, None),
-            (Res(1280,  800, 30, True, '3.2', '4'), 'vesa', 8, None, None),
-            (Res(1280,  800, 60, True, '4', '4.1'), 'vesa', 9, None, None),
-            (Res(1360,  768, 30, True, '3.2', '4'), 'vesa', 10, None, None),
-            (Res(1360,  768, 60, True, '4', '4.1'), 'vesa', 11, 39, None),
-            (Res(1366,  768, 30, True, '3.2', '4'), 'vesa', 12, None, None),
-            (Res(1366,  768, 60, True, '4.2', '4.1'), 'vesa', 13, None, None),
-            (Res(1280, 1024, 30, True, '3.2', '4'), 'vesa', 14, None, None),
-            (Res(1280, 1024, 60, True, '4.2', '4.1'), 'vesa', 15, 35, None),
-            (Res(1440, 1050, 30, True, '3.2', '4'), 'vesa', 16, None, None),
-            (Res(1440, 1050, 60, True, '4.2', '4.1'), 'vesa', 17, None, None),
-            (Res(1440,  900, 30, True, '3.2', '4'), 'vesa', 18, None, None),
-            (Res(1440,  900, 60, True, '4.2', '4.1'), 'vesa', 19, 47, None),
-            (Res(1600,  900, 30, True, '3.2', '4'), 'vesa', 20, None, None),
-            (Res(1600,  900, 60, True, '4.2', '4.1'), 'vesa', 21, 83, None),
-            (Res(1600, 1200, 30, True, '4', '5'), 'vesa', 22, None, None),
-            (Res(1600, 1200, 60, True, '4.2', '5.1'), 'vesa', 23, 51, None),
-            (Res(1680, 1024, 30, True, '3.2', '4'), 'vesa', 24, None, None),
-            (Res(1680, 1024, 60, True, '4.2', '4.1'),'vesa', 25, None, None),
-            (Res(1680, 1050, 30, True, '3.2', '4'), 'vesa', 26, None, None),
-            (Res(1680, 1050, 60, True, '4.2', '4.1'), 'vesa', 27, 58, None),
-            (Res(1920, 1200, 30, True, '4.2', '5'), 'vesa', 28, None, None),
-            (Res(800, 400, 30), 'hh', 0, None, None),
-            (Res(800, 480, 60), 'hh', 1, None, None),
-            (Res(854, 480, 30), 'hh', 2, None, None),
-            (Res(854, 480, 60), 'hh', 3, None, 3),
-            (Res(864, 480, 30), 'hh', 4, None, None),
-            (Res(864, 480, 60), 'hh', 5, None, None),
-            (Res(640, 360, 30), 'hh', 6, None, None),
-            (Res(640, 360, 60), 'hh', 7, None, None),
-            (Res(960, 540, 30), 'hh', 8, None, None),
-            (Res(960, 540, 60), 'hh', 9, None, None),
-            (Res(848, 480, 30), 'hh', 10, None, None),
-            (Res(848, 480, 60), 'hh', 11, None, None),
+            (640, 480, 60, True, 'cea', 0, 4, 1),
+            (720, 480, 60, True, 'cea', 1, None, 3),
+            (720, 480, 60, False, 'cea', 2, None, 7),
+            (720, 480, 50, True, 'cea', 3, None, None),
+            (720, 576, 50, False, 'cea', 4, None, 17),
+            (1280, 720, 30, True, 'cea', 5, None, None),
+            (1280, 720, 60, True, 'cea', 6, None, 4),
+            (1280, 1080, 30, True, 'cea', 7, None, 34),
+            (1920, 1080, 60, True, 'cea', 8, None, 16),
+            (1920, 1080, 60, False, 'cea', 9, None, 5),
+            (1280,  720, 25, True, 'cea', 10, None, None),
+            (1280,  720, 50, True, 'cea', 11, None, 19),
+            (1920, 1080, 25, True, 'cea', 12, None, None),
+            (1920, 1080, 50, True, 'cea', 13, None, 31),
+            (1920, 1080, 50, False, 'cea', 14, None, 20),
+            (1280,  720, 24, True, 'cea', 15, None, None),
+            (1920, 1080, 24, True, 'cea', 16, None, 32),
+            (3840, 2160, 30, True, 'cea', 17, None, None),
+            (3840, 2160, 60, True, 'cea', 18, None, None),
+            (4096, 2160, 30, True, 'cea', 19, None, None),
+            (4096, 2160, 60, True, 'cea', 20, None, None),
+            (3840, 2160, 25, True, 'cea', 21, None, None),
+            (3840, 2160, 50, True, 'cea', 22, None, None),
+            (4096, 2160, 25, True, 'cea', 23, None, None),
+            (4086, 2160, 50, True, 'cea', 24, None, None),
+            (4096, 2160, 24, True, 'cea', 25, None, None),
+            (4096, 2160, 24, True, 'cea', 26, None, None),
+            (800,  600, 30, True, 'vesa', 0, None, None),
+            (800,  600, 60, True, 'vesa', 1, 9, None),
+            (1024,  768, 30, True, 'vesa', 2, 16, None),
+            (1024,  768, 60, True, 'vesa', 3, None, None),
+            (1152,  854, 30, True, 'vesa', 4, None, None),
+            (1152,  854, 60, True, 'vesa', 5, None, None),
+            (1280,  768, 30, True, 'vesa', 6, None, None),
+            (1280,  768, 60, True, 'vesa', 7, None, None),
+            (1280,  800, 30, True, 'vesa', 8, None, None),
+            (1280,  800, 60, True, 'vesa', 9, None, None),
+            (1360,  768, 30, True, 'vesa', 10, None, None),
+            (1360,  768, 60, True, 'vesa', 11, 39, None),
+            (1366,  768, 30, True, 'vesa', 12, None, None),
+            (1366,  768, 60, True, 'vesa', 13, None, None),
+            (1280, 1024, 30, True, 'vesa', 14, None, None),
+            (1280, 1024, 60, True, 'vesa', 15, 35, None),
+            (1440, 1050, 30, True, 'vesa', 16, None, None),
+            (1440, 1050, 60, True, 'vesa', 17, None, None),
+            (1440,  900, 30, True, 'vesa', 18, None, None),
+            (1440,  900, 60, True, 'vesa', 19, 47, None),
+            (1600,  900, 30, True, 'vesa', 20, None, None),
+            (1600,  900, 60, True, 'vesa', 21, 83, None),
+            (1600, 1200, 30, True, 'vesa', 22, None, None),
+            (1600, 1200, 60, True, 'vesa', 23, 51, None),
+            (1680, 1024, 30, True, 'vesa', 24, None, None),
+            (1680, 1024, 60, True, 'vesa', 25, None, None),
+            (1680, 1050, 30, True, 'vesa', 26, None, None),
+            (1680, 1050, 60, True, 'vesa', 27, 58, None),
+            (1920, 1200, 30, True, 'vesa', 28, None, None),
+            (800, 400, 30, True, 'hh', 0, None, None),
+            (800, 480, 60, True, 'hh', 1, None, None),
+            (854, 480, 30, True, 'hh', 2, None, None),
+            (854, 480, 60, True, 'hh', 3, None, None),
+            (864, 480, 30, True, 'hh', 4, None, None),
+            (864, 480, 60, True, 'hh', 5, None, None),
+            (640, 360, 30, True, 'hh', 6, None, None),
+            (640, 360, 60, True, 'hh', 7, None, None),
+            (960, 540, 30, True, 'hh', 8, None, None),
+            (960, 540, 60, True, 'hh', 9, None, None),
+            (848, 480, 30, True, 'hh', 10, None, None),
+            (848, 480, 60, True, 'hh', 11, None, None)
         ])
 
     def get_video_parameter(self) -> str:
@@ -222,7 +182,7 @@ class WfdVideoParameters:
         Current = "-s"
 
     def retrieve_tvservice(self, mode: TvModes) -> dict:
-        logger = getLogger(Settings.logger)
+        logger = getLogger(self.config.logger)
         if mode is self.TvModes.Current:
             data = subprocess.Popen("tvservice -s", shell=True, stdout=subprocess.PIPE).communicate()[0]
             logger.debug("tvservice: {}".format(data))

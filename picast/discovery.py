@@ -19,18 +19,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import zeroconf
-from .settings import Settings
+
+from picast.settings import Settings
 
 
 class ServiceDiscovery():
     """Register and query mDNS/SD entries"""
 
-    def __init__(self):
+    def __init__(self, config=None):
+        self.config = Settings()
         self.zc = zeroconf.Zeroconf()
 
     def register(self):
         service_info = zeroconf.ServiceInfo('_display._tcp.local.', 'PiCast Remote Display._display._tcp.local.',
-                                            Settings.myaddress.encode('ascii'), port=Settings.rtsp_port)
+                                            self.config.myaddress.encode('ascii'), port=self.config.rtsp_port)
         self.zc.register_service(service_info, ttl=60, allow_name_change=False)
 
     def lookup(self):

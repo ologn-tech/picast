@@ -38,9 +38,10 @@ class PiCastException(Exception):
 
 class PiCast(threading.Thread):
 
-    def __init__(self, player):
+    def __init__(self, player, logger='picast'):
         super(PiCast, self).__init__(name='picast-rtsp-0', daemon=True)
-        self.logger = getLogger(Settings.logger)
+        self.config = Settings()
+        self.logger = getLogger(logger)
         self.player = player
         self.watchdog = 0
         self.csnum = 0
@@ -78,7 +79,7 @@ class PiCast(threading.Thread):
     def cast_seq_m3(self, sock):
         data = (sock.recv(1000))
         self.logger.debug("->{}".format(data))
-        msg = "wfd_client_rtp_ports: RTP/AVP/UDP;unicast {} 0 mode=play\r\n".format(Settings.rtp_port)\
+        msg = "wfd_client_rtp_ports: RTP/AVP/UDP;unicast {} 0 mode=play\r\n".format(self.config.rtp_port)\
               + WfdVideoParameters().get_video_parameter()
         m3resp = self.rtsp_response_header(seq=2,
                                            others=[('Content-Type', 'text/parameters'),
@@ -104,11 +105,11 @@ class PiCast(threading.Thread):
 
     def cast_seq_m6(self, sock):
         m6req = self.rtsp_response_header(cmd="SETUP",
-                                          url="rtsp://{0:s}/wfd1.0/streamid=0".format(Settings.peeraddress),
+                                          url="rtsp://{0:s}/wfd1.0/streamid=0".format(self.config.peeraddress),
                                           seq=101,
                                           others=[
                                               ('Transport',
-                                               'RTP/AVP/UDP;unicast;client_port={0:d}'.format(Settings.rtp_port))
+                                               'RTP/AVP/UDP;unicast;client_port={0:d}'.format(self.config['rtp_port']))
                                           ])
         self.logger.debug("<-{}".format(m6req))
         sock.sendall(m6req.encode("UTF-8"))
@@ -127,7 +128,7 @@ class PiCast(threading.Thread):
 
     def cast_seq_m7(self, sock, sessionid):
         m7req = self.rtsp_response_header(cmd='PLAY',
-                                          url='rtsp://{0:s}/wfd1.0/streamid=0 RTSP/1.0'.format(Settings.peeraddress),
+                                          url='rtsp://{0:s}/wfd1.0/streamid=0 RTSP/1.0'.format(self.config['peeraddress']),
                                           seq=102,
                                           others=[('Session', sessionid)])
         self.logger.debug("<-{}".format(m7req))
@@ -229,8 +230,8 @@ class PiCast(threading.Thread):
             sd.register()
             self.logger.debug("Register mDNS/SD entry.")
             self.logger.info("Start connecting...")
-            if self.connect(sock, Settings.peeraddress, Settings.rtsp_port):
-                self.logger.debug("Connected to Wfd-source in {}.".format(Settings.peeraddress))
+            if self.connect(sock, self.config['peeraddress'], self.config['rtsp_port']):
+                self.logger.debug("Connected to Wfd-source in {}.".format(self.config['peeraddress']))
                 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as idrsock:
                     idrsock_address = ('127.0.0.1', 0)
                     idrsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
