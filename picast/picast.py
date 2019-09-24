@@ -123,12 +123,12 @@ class PiCast(threading.Thread):
         self.logger.debug("server port {}".format(serverport))
         paralist = data.decode("UTF-8").split()
         position = paralist.index('Session:') + 1
-        sessionid = paralist[position]
+        sessionid = paralist[position].split(';')[0]
         return sessionid
 
     def cast_seq_m7(self, sock, sessionid):
         m7req = self.rtsp_response_header(cmd='PLAY',
-                                          url='rtsp://{0:s}/wfd1.0/streamid=0 RTSP/1.0'.format(self.config.peeraddress),
+                                          url='rtsp://{0:s}/wfd1.0/streamid=0'.format(self.config.peeraddress),
                                           seq=102,
                                           others=[('Session', sessionid)])
         self.logger.debug("<-{}".format(m7req))
