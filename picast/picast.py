@@ -70,7 +70,7 @@ class PiCast(threading.Thread):
         sock.sendall(s_data.encode("UTF-8"))
 
     def cast_seq_m2(self, sock):
-        s_data = self.rtsp_response_header(seq=100, others=[('Require', 'org.wfs.wfd1.0')])
+        s_data = self.rtsp_response_header(seq=100, cmd="OPTIONS", url="*", others=[('Require', 'org.wfs.wfd1.0')])
         self.logger.debug("<-{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
         data = (sock.recv(1000))
@@ -81,7 +81,7 @@ class PiCast(threading.Thread):
         self.logger.debug("->{}".format(data))
         msg = "wfd_client_rtp_ports: RTP/AVP/UDP;unicast {} 0 mode=play\r\n".format(self.config.rtp_port)\
               + WfdVideoParameters().get_video_parameter()
-        m3resp = self.rtsp_response_header(seq=2,
+        m3resp = self.rtsp_response_header(seq=2, res="200 OK",
                                            others=[('Content-Type', 'text/parameters'),
                                                    ('Content-Length', len(msg))
                                                    ])
@@ -109,7 +109,7 @@ class PiCast(threading.Thread):
                                           seq=101,
                                           others=[
                                               ('Transport',
-                                               'RTP/AVP/UDP;unicast;client_port={0:d}'.format(self.config['rtp_port']))
+                                               'RTP/AVP/UDP;unicast;client_port={0:d}'.format(self.config.rtp_port))
                                           ])
         self.logger.debug("<-{}".format(m6req))
         sock.sendall(m6req.encode("UTF-8"))
@@ -128,7 +128,7 @@ class PiCast(threading.Thread):
 
     def cast_seq_m7(self, sock, sessionid):
         m7req = self.rtsp_response_header(cmd='PLAY',
-                                          url='rtsp://{0:s}/wfd1.0/streamid=0 RTSP/1.0'.format(self.config['peeraddress']),
+                                          url='rtsp://{0:s}/wfd1.0/streamid=0 RTSP/1.0'.format(self.config.peeraddress),
                                           seq=102,
                                           others=[('Session', sessionid)])
         self.logger.debug("<-{}".format(m7req))
