@@ -1,22 +1,11 @@
 import os
 from logging import config as LoggingConfig
 
-from picast.settings import Settings
 from picast.video import WfdVideoParameters
 from picast.wifip2p import WifiP2PServer
 from picast.wpacli import WpaCli
 
 import pytest
-
-
-@pytest.mark.unit
-def test_logging_config():
-    LoggingConfig.fileConfig(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'picast', 'logging.ini'))
-
-
-@pytest.mark.unit
-def test_config_read():
-    assert Settings().logger == 'picast'
 
 
 @pytest.mark.unit
@@ -155,7 +144,7 @@ def test_load_resolutons_json():
     assert len(v.resolutions['vesa']) == 8
 
 
-@pytest.mark.unit
+@pytest.mark.basic
 def test_get_display_resolution(monkeypatch):
     def mockreturn(self, cmd):
         return _tvservice_mock(cmd)
