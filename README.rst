@@ -24,7 +24,7 @@ Installation
 
 Run apt install command on Rasbpian / Raspberry Pi Zero W/WH, or Raspberry Pi 3
 
-.. code-block::
+.. code-block:: console
 
     $ sudo apt install net-tools python3 udhcpd python-gst-1.0 libgtk-3-dev python3-gi gir1.2-gtk-3.0
     $ sudo apt install gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0
@@ -34,13 +34,13 @@ Run apt install command on Rasbpian / Raspberry Pi Zero W/WH, or Raspberry Pi 3
 
 For debug and development;
 
-.. code-block::
+.. code-block:: console
 
     $ sudo apt install gstreamer1.0-tools
 
 Note: udhcpd is a DHCP server for Ubuntu and Debian.
 
-.. code-block::
+.. code-block:: console
 
     $ git clone https://github.com/miurahr/picast.git picast
 
@@ -48,7 +48,7 @@ Note: udhcpd is a DHCP server for Ubuntu and Debian.
 Run
 ---
 
-.. code-block::
+.. code-block:: console
 
     $ cd picast
     $ bin/picast
@@ -76,7 +76,7 @@ Autostart
 
 Edit /home/pi/.config/lxsessions/LXDE/autostart
 
-.. code-block::
+.. code-block:: bash
 
     @xscreensaver -no-splash
     @lxterminal -l -e /home/pi/picast/bin/picast
