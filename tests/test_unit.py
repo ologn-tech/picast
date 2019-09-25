@@ -85,12 +85,101 @@ def test_wpacli_set_p2p_go_ht40(monkeypatch):
 
 
 @pytest.mark.unit
+def test_wpacli_wfd_subelem_set(monkeypatch):
+
+    def mockreturn(self, *arg):
+        assert arg == ("wfd_subelem_set", "0", '00000000')
+        return "OK"
+
+    monkeypatch.setattr(WpaCli, "cmd", mockreturn)
+    wpacli = WpaCli()
+    wpacli.wfd_subelem_set(0, "00000000")
+
+
+@pytest.mark.unit
+def test_wpacli_p2p_group_add(monkeypatch):
+
+    def mockreturn(self, *arg):
+        assert arg == ("p2p_group_add", 'group')
+        return "OK"
+
+    monkeypatch.setattr(WpaCli, "cmd", mockreturn)
+    wpacli = WpaCli()
+    wpacli.p2p_group_add("group")
+
+
+@pytest.mark.unit
+def test_wpacli_wps_pin(monkeypatch):
+
+    def mockreturn(self, *arg):
+        assert arg == ('-i', 'w1p0', 'wps_pin', 'any', '12345678', '300')
+        return "OK"
+
+    monkeypatch.setattr(WpaCli, "cmd", mockreturn)
+    wpacli = WpaCli()
+    wpacli.set_wps_pin("w1p0", '12345678', 300)
+
+
+@pytest.mark.unit
+def test_wpa_p2p_interface(monkeypatch):
+    def mockreturn(self, *arg):
+        assert arg == ('interface',)
+        return ["Selected interface 'p2p-wlp4s0'", "Available interfaces:", "p2p-wlp4s0", "wlp4s0"]
+    monkeypatch.setattr(WpaCli, "cmd", mockreturn)
+    wpacli = WpaCli()
+    result = wpacli.get_p2p_interface()
+    assert result == "p2p-wlp4s0"
+
+
+@pytest.mark.unit
+def test_wpa_check_p2p_interface(monkeypatch):
+    def mockreturn(self, *arg):
+        assert arg == ('interface',)
+        return ["Selected interface 'p2p-wlp4s0'", "Available interfaces:", "p2p-wlp4s0", "wlp4s0"]
+    monkeypatch.setattr(WpaCli, "cmd", mockreturn)
+    wpacli = WpaCli()
+    assert wpacli.check_p2p_interface()
+
+
+@pytest.mark.unit
+def test_wpa_get_interface(monkeypatch):
+    def mockreturn(self, *arg):
+        assert arg == ('interface',)
+        return ["Selected interface 'p2p-wlp4s0'", "Available interfaces:", "p2p-wlp4s0", "wlp4s0"]
+    monkeypatch.setattr(WpaCli, "cmd", mockreturn)
+    wpacli = WpaCli()
+    selected, interfaces = wpacli.get_interfaces()
+    assert selected == 'p2p-wlp4s0'
+    assert interfaces == ['p2p-wlp4s0', 'wlp4s0']
+
+
+@pytest.mark.unit
 def test_devinfo(monkeypatch):
     def mockreturn(self, *arg):
         return
     monkeypatch.setattr(WifiP2PServer, "set_p2p_interface", mockreturn)
     p2p = WifiP2PServer()
     assert  p2p.wfd_devinfo() == '00060151022a012c'
+
+
+@pytest.mark.unit
+def test_devinfo2(monkeypatch):
+    def mockreturn(self, *arg):
+        return
+    monkeypatch.setattr(WifiP2PServer, "set_p2p_interface", mockreturn)
+    p2p = WifiP2PServer()
+    assert p2p.wfd_devinfo2() == '00020001'
+
+
+@pytest.mark.unit
+def test_ext_cap(monkeypatch):
+    def mockreturn(self, *arg):
+        return
+    monkeypatch.setattr(WifiP2PServer, "set_p2p_interface", mockreturn)
+    p2p = WifiP2PServer()
+    assert p2p.wfd_ext_cap(uibc=False, i2c=False) == '00020000'
+    assert p2p.wfd_ext_cap(uibc=True, i2c=False) == '00020001'
+    assert p2p.wfd_ext_cap(uibc=False, i2c=True) == '00020002'
 
 
 def _tvservice_mock(cmd):
