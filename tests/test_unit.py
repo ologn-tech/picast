@@ -144,7 +144,7 @@ def test_load_resolutons_json():
     assert len(v.resolutions['vesa']) == 8
 
 
-@pytest.mark.basic
+@pytest.mark.unit
 def test_get_display_resolution(monkeypatch):
     def mockreturn(self, cmd):
         return _tvservice_mock(cmd)
@@ -154,4 +154,3 @@ def test_get_display_resolution(monkeypatch):
     assert cea == 0x0101C3
     assert vesa == 0x0208006
     assert hh == 0x00
-

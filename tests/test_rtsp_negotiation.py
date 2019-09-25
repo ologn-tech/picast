@@ -36,7 +36,7 @@ class MockRtspServer(threading.Thread):
 
         try:
             # M1
-            m1 = "OPTION * RTSP/1.0\r\n\r\n"
+            m1 = "OPTIONS * RTSP/1.0\r\n\r\n"
             conn.sendall(m1.encode("UTF-8"))
             m1_resp = conn.recv(1000).decode("UTF-8")
             assert m1_resp == "RTSP/1.0\r\nCSeq: 1\r\nPublic: org.wfs.wfd1.0, SET_PARAMETER, GET_PARAMETER\r\n\r\n"
@@ -57,7 +57,7 @@ class MockRtspServer(threading.Thread):
             assert m3_resp == "RTSP/1.0 200 OK\r\nCSeq: 2\r\nContent-Type: text/parameters\r\nContent-Length: 289\r\n\r\n" \
                               "wfd_client_rtp_ports: RTP/AVP/UDP;unicast 1028 0 mode=play\r\n" \
                               "wfd_video_formats: 00 00 01 01 00000001 00000000 00000000 00 0000 0000 00 none none\r\n" \
-                              "wfd_audio_codecs: LPCM 00000003 00\r\nwfd_3d_video_formats: none\r\n" \
+                              "wfd_audio_codecs: LPCM 00000002 00\r\nwfd_3d_video_formats: none\r\n" \
                               "wfd_content_protection: none\r\nwfd_display_edid: none\r\nwfd_coupled_sink: none\r\n\r\n"
 
             # M4
@@ -167,7 +167,7 @@ def test_rtsp_negotiation(monkeypatch, rtsp_mock_server):
 
     def videomock(self):
         return "wfd_video_formats: 00 00 01 01 00000001 00000000 00000000 00 0000 0000 00 none none\r\n" \
-               "wfd_audio_codecs: LPCM 00000003 00\r\nwfd_3d_video_formats: none\r\n" \
+               "wfd_audio_codecs: LPCM 00000002 00\r\nwfd_3d_video_formats: none\r\n" \
                "wfd_content_protection: none\r\nwfd_display_edid: none\r\nwfd_coupled_sink: none\r\n\r\n"
 
     def rtspsrvmock(self, sock, idrsock):

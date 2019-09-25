@@ -47,7 +47,23 @@ class PiCast(threading.Thread):
         self.csnum = 0
         self.daemon = True
 
-    def rtsp_response_header(self, cmd=None, url=None, res=None, seq=None, others=None):
+    @staticmethod
+    def rtsp_parse_command(header):
+        m = re.match(r'((OPTIONS|PLAY|SET_PARAMETER|GET_PARAMETER|SETUP|TEARDOWN)\s+(.*)\s+)?(RTSP/1.0)\s*([0-9]+\s.+)?$', header)
+        if m is None:
+            return None, None, None
+        if m.group(1) == None:
+            cmd = None
+            url = None
+            resp = m.group(5).split('\r')[0]
+        else:
+            cmd = m.group(2)
+            url = m.group(3)
+            resp = None
+        return cmd, url, resp
+
+    @staticmethod
+    def rtsp_response_header(cmd=None, url=None, res=None, seq=None, others=None):
         if cmd is not None:
             msg = "{0:s} {1:s} RTSP/1.0".format(cmd, url)
         else:
@@ -63,18 +79,28 @@ class PiCast(threading.Thread):
         return msg
 
     def cast_seq_m1(self, sock):
-        data = (sock.recv(1000))  # RTSP OPTIONS message
-        self.logger.debug("<-{}".format(data))
+        data = sock.recv(1000).decode("UTF-8")
+        self.logger.debug("->{}".format(data))
+        headers = data.split('\r\n')
+        cmd, url, resp = self.rtsp_parse_command(headers[0])
+        if cmd != 'OPTIONS':
+            return False
         s_data = self.rtsp_response_header(seq=1, others=[("Public", "org.wfs.wfd1.0, SET_PARAMETER, GET_PARAMETER")])
-        self.logger.debug("->{}".format(s_data))
+        self.logger.debug("<-{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
+        return True
 
     def cast_seq_m2(self, sock):
         s_data = self.rtsp_response_header(seq=100, cmd="OPTIONS", url="*", others=[('Require', 'org.wfs.wfd1.0')])
         self.logger.debug("<-{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
-        data = (sock.recv(1000))
+        data = sock.recv(1000).decode("UTF-8")
         self.logger.debug("->{}".format(data))
+        headers = data.split('\r\n')
+        cmd, url, resp = self.rtsp_parse_command(headers[0])
+        if resp  != "200 OK":
+            return False
+        return True
 
     def cast_seq_m3(self, sock):
         data = (sock.recv(1000))
@@ -169,8 +195,10 @@ class PiCast(threading.Thread):
 
     def negotiate(self, conn) -> bool:
         self.logger.debug("---- Start negotiation ----")
-        self.cast_seq_m1(conn)
-        self.cast_seq_m2(conn)
+        if not self.cast_seq_m1(conn):
+            return False
+        if not self.cast_seq_m2(conn):
+            return False
         self.cast_seq_m3(conn)
         self.cast_seq_m4(conn)
         self.cast_seq_m5(conn)
@@ -211,7 +239,8 @@ class PiCast(threading.Thread):
                             conn.sendall(resp.encode("UTF-8"))
                             continue
 
-    def connect(self, sock, remote: str, port: int) -> bool:
+    @staticmethod
+    def connect(sock: socket, remote: str, port: int) -> bool:
         max_trial = 1200
         for _ in range(max_trial):
             try:
