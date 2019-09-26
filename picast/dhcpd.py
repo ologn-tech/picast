@@ -18,6 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import os
 import subprocess
 import tempfile
 from logging import getLogger
@@ -52,3 +53,5 @@ class Dhcpd():
         if self.dhcpd is not None:
             self.dhcpd.terminate()
             self.conf_path.unlink()
+            # FIXME: workaround for sudo process killing.
+            os.system("sudo pkill udhcpd")

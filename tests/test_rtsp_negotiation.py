@@ -152,7 +152,7 @@ def test_rtsp_negotiation(monkeypatch, rtsp_mock_server):
     def rtspsrvmock(self, sock, idrsock):
         return
 
-    monkeypatch.setattr(PiCast, "connect", mockretrun)
+    monkeypatch.setattr(PiCast, "_connect", mockretrun)
     monkeypatch.setattr(PiCast, "rtspsrv", rtspsrvmock)
     monkeypatch.setattr(WfdVideoParameters, "get_video_parameter", videomock)
 

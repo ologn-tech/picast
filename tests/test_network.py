@@ -31,7 +31,7 @@ def test_connection():
     server = MockServer(port)
     server.start()
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    assert PiCast.connect(sock, '127.0.0.1', port)
+    assert PiCast._connect(sock, '127.0.0.1', port)
     sock.close()
     server.join()
 
