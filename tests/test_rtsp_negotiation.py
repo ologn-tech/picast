@@ -39,7 +39,7 @@ class MockRtspServer(threading.Thread):
             m1 = "OPTIONS * RTSP/1.0\r\n\r\n"
             conn.sendall(m1.encode("UTF-8"))
             m1_resp = conn.recv(1000).decode("UTF-8")
-            assert m1_resp == "RTSP/1.0\r\nCSeq: 1\r\nPublic: org.wfs.wfd1.0, SET_PARAMETER, GET_PARAMETER\r\n\r\n"
+            assert m1_resp == "RTSP/1.0 200 OK\r\nCSeq: 1\r\nPublic: org.wfs.wfd1.0, SET_PARAMETER, GET_PARAMETER\r\n\r\n"
 
             # M2
             m2 = conn.recv(1000).decode("UTF-8")
