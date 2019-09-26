@@ -85,7 +85,7 @@ class PiCast(threading.Thread):
         cmd, url, resp = self.rtsp_parse_command(headers[0])
         if cmd != 'OPTIONS':
             return False
-        s_data = self.rtsp_response_header(seq=1, others=[("Public", "org.wfs.wfd1.0, SET_PARAMETER, GET_PARAMETER")])
+        s_data = self.rtsp_response_header(seq=1, res="200 OK", others=[("Public", "org.wfs.wfd1.0, SET_PARAMETER, GET_PARAMETER")])
         self.logger.debug("<-{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
         return True
@@ -256,11 +256,12 @@ class PiCast(threading.Thread):
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             sd = ServiceDiscovery()
+            self.logger.info("Register mDNS/SD entry.")
             sd.register()
-            self.logger.debug("Register mDNS/SD entry.")
             self.logger.info("Start connecting...")
+            # FIXME: wait for dhcpd leased an address to new client here then initiating to connect
             if self.connect(sock, self.config.peeraddress, self.config.rtsp_port):
-                self.logger.debug("Connected to Wfd-source in {}.".format(self.config.peeraddress))
+                self.logger.info("Connected to Wfd-source in {}.".format(self.config.peeraddress))
                 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as idrsock:
                     idrsock_address = ('127.0.0.1', 0)
                     idrsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
