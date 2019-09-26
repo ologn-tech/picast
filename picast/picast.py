@@ -299,10 +299,10 @@ class PiCast(threading.Thread):
                 headers, body = self._split_header_body(data)
                 cmd, url, resp, seq, others = self._rtsp_parse_headers(headers)
                 if cmd == "GET_PARAMETER" and url == "rtsp://localhost/wfd1.0":
-                    resp_msg = self._rtsp_response_header(seq=seq, resp="200 OK")
+                    resp_msg = self._rtsp_response_header(seq=seq, res="200 OK")
                     conn.sendall(resp_msg.encode("UTF-8"))
                 elif cmd == "SET_PARAMETER" and 'wfd_trigger_method: TEARDOWN' in body:
-                    resp_msg = self._rtsp_response_header(seq=seq, resp="200 OK")
+                    resp_msg = self._rtsp_response_header(seq=seq, res="200 OK")
                     conn.sendall(resp_msg.encode("UTF-8"))
                     self.logger.debug("Got TEARDOWN request.")
                     m5_msg = self._rtsp_response_header(seq=self.csnum, cmd="TEARDOWN",
