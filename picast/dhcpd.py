@@ -34,13 +34,17 @@ class Dhcpd():
         self.dhcpd = None
         self.interface = interface
         self.logger = getLogger(logger)
+        self.conf_path = self._create_conf()
+
+    def _create_conf(self):
+        fd, conf_path = tempfile.mkstemp(suffix='.conf')
+        conf = "start  {}\nend {}\ninterface {}\nnotify_file dumpleases\noption subnet {}\noption lease {}\n".format(
+            Settings().peeraddress, Settings().peeraddress, self.interface, Settings().netmask, Settings().timeout)
+        with open(conf_path, 'w') as c:
+            c.write(conf)
+        return conf_path
 
     def start(self):
-        fd, self.conf_path = tempfile.mkstemp(suffix='.conf')
-        conf = "start  {}\nend {}\ninterface {}\noption subnet {}\noption lease {}\n".format(
-            Settings.peeraddress, Settings.peeraddress, self.interface, Settings.netmask, Settings.timeout)
-        with open(self.conf_path, 'w') as c:
-            c.write(conf)
         self.logger.debug("Start dhcpd server.")
         self.dhcpd = subprocess.Popen(["sudo", "udhcpd", self.conf_path])
 
