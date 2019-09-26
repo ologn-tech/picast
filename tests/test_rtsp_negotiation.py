@@ -1,7 +1,6 @@
 
 import socket
 import threading
-import queue
 from time import sleep
 
 import pytest
@@ -23,10 +22,9 @@ class MockPlayer():
 
 class MockRtspServer(threading.Thread):
 
-    def __init__(self, port, que):
+    def __init__(self, port):
         super(MockRtspServer, self).__init__()
         self.port = port
-        self.que = que
 
     def run(self):
         self.sock =  socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -34,91 +32,73 @@ class MockRtspServer(threading.Thread):
         self.sock.listen(1)
         conn, remote = self.sock.accept()
 
-        try:
-            # M1
-            m1 = "OPTIONS * RTSP/1.0\r\n\r\n"
-            conn.sendall(m1.encode("UTF-8"))
-            m1_resp = conn.recv(1000).decode("UTF-8")
-            assert m1_resp == "RTSP/1.0 200 OK\r\nCSeq: 1\r\nPublic: org.wfs.wfd1.0, SET_PARAMETER, GET_PARAMETER\r\n\r\n"
+        # M1
+        m1 = "OPTIONS * RTSP/1.0\r\nCSeq: 0\r\nRequire: org.wfa.wfd1.0\r\n\r\n"
+        conn.sendall(m1.encode("UTF-8"))
+        m1_resp = conn.recv(1000).decode("UTF-8")
+        if m1_resp != "RTSP/1.0 200 OK\r\nCSeq: 0\r\nPublic: org.wfs.wfd1.0, SET_PARAMETER, GET_PARAMETER\r\n\r\n":
+            pytest.fail("M1 response failure: {}".format(m1_resp))
 
-            # M2
-            m2 = conn.recv(1000).decode("UTF-8")
-            assert m2 == "OPTIONS * RTSP/1.0\r\nCSeq: 100\r\nRequire: org.wfs.wfd1.0\r\n\r\n"
-            m2_resp = "RTSP/1.0 200 OK\r\nCSeq: 100\r\nPublic: org.wfa.wfd1.0, SETUP, TEARDOWN, PLAY, PAUSE, GET_PARAMETER, SET_PARAMETER\r\n\r\n"
-            conn.sendall(m2_resp.encode("UTF-8"))
+        # M2
+        m2 = conn.recv(1000).decode("UTF-8")
+        if m2 != "OPTIONS * RTSP/1.0\r\nCSeq: 100\r\nRequire: org.wfs.wfd1.0\r\n\r\n":
+            pytest.fail("M2 request failure: {}".format(m2))
+        m2_resp = "RTSP/1.0 200 OK\r\nCSeq: 100\r\nPublic: org.wfa.wfd1.0, SETUP, TEARDOWN, PLAY, PAUSE, GET_PARAMETER, SET_PARAMETER\r\n\r\n"
+        conn.sendall(m2_resp.encode("UTF-8"))
 
-            # M3
-            m3 = "GET_PARAMETER rtsp://localhost/wfd1.0 RTSP/1.0\r\nCSeq: 2\r\nContent-Type: text/parameters\r\n" \
-                 "Content-Length: 141\r\n\r\n" \
-                 "wfd_video_formats\r\nwfd_audio_codecs\r\nwfd_3d_video_formats\r\nwfd_content_protection\r\n" \
-                 "wfd_display_edid\r\nwfd_coupled_sink\r\nwfd_client_rtp_ports\r\n\r\n"
-            conn.sendall(m3.encode("UTF-8"))
-            m3_resp = conn.recv(1000).decode("UTF-8")
-            assert m3_resp == "RTSP/1.0 200 OK\r\nCSeq: 2\r\nContent-Type: text/parameters\r\nContent-Length: 289\r\n\r\n" \
-                              "wfd_client_rtp_ports: RTP/AVP/UDP;unicast 1028 0 mode=play\r\n" \
-                              "wfd_video_formats: 00 00 01 01 00000001 00000000 00000000 00 0000 0000 00 none none\r\n" \
-                              "wfd_audio_codecs: LPCM 00000002 00\r\nwfd_3d_video_formats: none\r\n" \
-                              "wfd_content_protection: none\r\nwfd_display_edid: none\r\nwfd_coupled_sink: none\r\n\r\n"
+        # M3
+        m3 = "GET_PARAMETER rtsp://localhost/wfd1.0 RTSP/1.0\r\nCSeq: 1\r\nContent-Type: text/parameters\r\n" \
+             "Content-Length: 141\r\n\r\n" \
+             "wfd_video_formats\r\nwfd_audio_codecs\r\nwfd_3d_video_formats\r\nwfd_content_protection\r\n" \
+             "wfd_display_edid\r\nwfd_coupled_sink\r\nwfd_client_rtp_ports\r\n\r\n"
+        conn.sendall(m3.encode("UTF-8"))
+        m3_resp = conn.recv(1000).decode("UTF-8")
+        if m3_resp != "RTSP/1.0 200 OK\r\nCSeq: 1\r\nContent-Type: text/parameters\r\nContent-Length: 289\r\n\r\n" \
+                      "wfd_client_rtp_ports: RTP/AVP/UDP;unicast 1028 0 mode=play\r\n" \
+                      "wfd_video_formats: 00 00 01 01 00000001 00000000 00000000 00 0000 0000 00 none none\r\n" \
+                      "wfd_audio_codecs: LPCM 00000002 00\r\nwfd_3d_video_formats: none\r\n" \
+                      "wfd_content_protection: none\r\nwfd_display_edid: none\r\nwfd_coupled_sink: none\r\n\r\n":
+            resp_400 = "RTSP/1.0 400 Bad Request\r\n\r\n"
+            conn.sendall(resp_400.encode("UTF-8"))
+            pytest.fail("M3 bad request: {}".format(m3_resp))
 
-            # M4
-            m4 = "SET_PARAMETER rtsp://localhost/wfd1.0 RTSP/1.0\r\nCSeq: 3\r\nContent-Type: text/parameters\r\nContent-Length: 302\r\n\r\n" \
-                 "wfd_video_formats: 00 00 01 01 00000001 00000000 00000000 00 0000 0000 00 none none\r\nwfd_audio_codecs: LPCM 00000002 00\r\n" \
-                 "wfd_presentation_URL: rtsp://192.168.173.80/wfd1.0/streamid=0 none\r\n" \
-                 "wfd_client_rtp_ports: RTP/AVP/UDP;unicast 1028 0 mode=play"
-            conn.sendall(m4.encode("UTF-8"))
-            m4_resp = conn.recv(1000).decode("UTF-8")
-            assert m4_resp == "RTSP/1.0 200 OK\r\nCSeq: 3\r\n\r\n"
+        # M4
+        m4 = "SET_PARAMETER rtsp://localhost/wfd1.0 RTSP/1.0\r\nCSeq: 2\r\nContent-Type: text/parameters\r\nContent-Length: 302\r\n\r\n" \
+             "wfd_video_formats: 00 00 01 01 00000001 00000000 00000000 00 0000 0000 00 none none\r\nwfd_audio_codecs: LPCM 00000002 00\r\n" \
+             "wfd_presentation_URL: rtsp://192.168.173.80/wfd1.0/streamid=0 none\r\n" \
+             "wfd_client_rtp_ports: RTP/AVP/UDP;unicast 1028 0 mode=play"
+        conn.sendall(m4.encode("UTF-8"))
+        m4_resp = conn.recv(1000).decode("UTF-8")
+        if m4_resp != "RTSP/1.0 200 OK\r\nCSeq: 2\r\n\r\n":
+            pytest.fail("M4 bad response: {}".format(m4_resp))
 
-            # M5
-            m5 = "SET_PARAMETER rtsp://localhost/wfd1.0 RTSP/1.0\r\n" \
-                 "CSeq: 4\r\nContent-Type: text/paramters\r\nContent-Length: 27\r\nwfd_trigger_method: SETUP\r\n\r\n"
-            conn.sendall(m5.encode("UTF-8"))
-            m5_resp = conn.recv(1000).decode("UTF-8")
-            assert m5_resp == "RTSP/1.0 200 OK\r\nCSeq: 4\r\n\r\n"
+        # M5
+        m5 = "SET_PARAMETER rtsp://localhost/wfd1.0 RTSP/1.0\r\n" \
+             "CSeq: 3\r\nContent-Type: text/paramters\r\nContent-Length: 27\r\nwfd_trigger_method: SETUP\r\n\r\n"
+        conn.sendall(m5.encode("UTF-8"))
+        m5_resp = conn.recv(1000).decode("UTF-8")
+        if m5_resp != "RTSP/1.0 200 OK\r\nCSeq: 3\r\n\r\n":
+            pytest.fail("M5 response failure: {}".format(m5_resp))
 
-            # M6
-            m6 = conn.recv(1000).decode("UTF-8")
-            assert m6 == "SETUP rtsp://192.168.173.80/wfd1.0/streamid=0 RTSP/1.0\r\nCSeq: 101\r\n" \
-                         "Transport: RTP/AVP/UDP;unicast;client_port=1028\r\n\r\n"
-            m6_resp = "RTSP/1.0 200 OK\r\nCSeq: 101\r\nSession: 7C9C5678;timeout=30\r\n" \
-                      "Transport: RTP/AVP/UDP;unicast;client_port=1028;server_port=5000\r\n\r\n"
-            conn.sendall(m6_resp.encode("UTF-8"))
+        # M6
+        m6 = conn.recv(1000).decode("UTF-8")
+        if m6 != "SETUP rtsp://192.168.173.80/wfd1.0/streamid=0 RTSP/1.0\r\nCSeq: 101\r\n" \
+                     "Transport: RTP/AVP/UDP;unicast;client_port=1028\r\n\r\n":
+            resp_400 = "RTSP/1.0 400 Bad Request\r\n\r\n"
+            conn.sendall(resp_400.encode("UTF-8"))
+            pytest.fail("M6 request failure: {}".format(m6))
+        m6_resp = "RTSP/1.0 200 OK\r\nCSeq: 101\r\nSession: 7C9C5678;timeout=30\r\n" \
+                  "Transport: RTP/AVP/UDP;unicast;client_port=1028;server_port=5000\r\n\r\n"
+        conn.sendall(m6_resp.encode("UTF-8"))
 
-            # M7
-            m7 = conn.recv(1000).decode("UTF-8")
-            assert m7 == "PLAY rtsp://192.168.173.80/wfd1.0/streamid=0 RTSP/1.0\r\nCSeq: 102\r\nSession: 7C9C5678\r\n\r\n"
-            m7_resp = "RTSP/1.0 200 OK\r\nCSeq: 102\r\n\r\n"
-            conn.sendall(m7_resp.encode("UTF-8"))
-        except AssertionError as ae:
-            self.que.put("{}".format(ae))
-
-
-class Que:
-    # this class is Borg/Singleton
-    _shared_state = {
-        '_que': None,
-    }
-
-    def __new__(cls, *p, **k):
-        self = object.__new__(cls, *p, **k)
-        self.__dict__ = cls._shared_state
-        return self
-
-    def __init__(self):
-        if self._que is None:
-            self._que = queue.Queue()
-
-    def put(self, v):
-        self._que.put(v)
-
-    def get(self):
-        if self._que.empty():
-            return None
-        else:
-            return self._que.get()
-
-    def empty(self):
-        return self._que.empty()
+        # M7
+        m7 = conn.recv(1000).decode("UTF-8")
+        if m7 != "PLAY rtsp://192.168.173.80/wfd1.0/streamid=0 RTSP/1.0\r\nCSeq: 102\r\nSession: 7C9C5678\r\n\r\n":
+            resp_400 = "RTSP/1.0 400 Bad Request\r\n\r\n"
+            conn.sendall(resp_400.encode("UTF-8"))
+            pytest.fail("M7 request failure: {}".format(m7))
+        m7_resp = "RTSP/1.0 200 OK\r\nCSeq: 102\r\n\r\n"
+        conn.sendall(m7_resp.encode("UTF-8"))
 
 
 class FreePort:
@@ -151,8 +131,7 @@ class FreePort:
 @pytest.fixture
 def rtsp_mock_server():
     port = FreePort().port
-    que = Que()
-    return MockRtspServer(port, que)
+    return MockRtspServer(port)
 
 
 @pytest.mark.connection
@@ -184,7 +163,3 @@ def test_rtsp_negotiation(monkeypatch, rtsp_mock_server):
     picast.start()
     picast.join()
     rtsp_mock_server.join()
-    que = Que()
-    if not que.empty():
-        print("\n\n{}\n".format(que.get()))
-        assert False

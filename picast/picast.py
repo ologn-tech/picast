@@ -48,22 +48,32 @@ class PiCast(threading.Thread):
         self.daemon = True
 
     @staticmethod
-    def rtsp_parse_command(header):
-        m = re.match(r'((OPTIONS|PLAY|SET_PARAMETER|GET_PARAMETER|SETUP|TEARDOWN)\s+(.*)\s+)?(RTSP/1.0)\s*([0-9]+\s.+)?$', header)
-        if m is None:
-            return None, None, None
-        if m.group(1) == None:
+    def _rtsp_parse_headers(headers):
+        firstline = headers[0]
+        if firstline.startswith('RTSP/1.0'):
+            version, status, reason = firstline.split(' ')
             cmd = None
             url = None
-            resp = m.group(5).split('\r')[0]
+            resp = "{} {}".format(status, reason)
         else:
-            cmd = m.group(2)
-            url = m.group(3)
+            cmd, url, version = firstline.split(' ')
+            if version != 'RTSP/1.0':
+                raise ValueError
             resp = None
-        return cmd, url, resp
+        seq = 0
+        others = {}
+        for h in headers[1:]:
+            pos = h.find(':')
+            key = h[:pos]
+            val = h[pos+2:]
+            if key == 'CSeq':
+                seq = int(val)
+            else:
+                others[key] = val
+        return cmd, url, resp, seq, others
 
     @staticmethod
-    def rtsp_response_header(cmd=None, url=None, res=None, seq=None, others=None):
+    def _rtsp_response_header(cmd=None, url=None, res=None, seq=None, others=None):
         if cmd is not None:
             msg = "{0:s} {1:s} RTSP/1.0".format(cmd, url)
         else:
@@ -78,59 +88,113 @@ class PiCast(threading.Thread):
         msg += '\r\n'
         return msg
 
+    @staticmethod
+    def _split_header_body(data):
+        pos = data.find('\r\n\r\n')
+        if pos > 0:
+            headers = data[:pos].split('\r\n')
+            body = data[pos+4:]
+        else:
+            raise ValueError
+        return headers, body
+
+    @staticmethod
+    def _parse_transport_header(data):
+        """ Parse Transport header value such as "Transport: RTP/AVP/UDP;unicast;client_port=1028;server_port=5000"
+        """
+        udp = True
+        client_port = 0
+        server_port = 0
+        paramlist = data.split(';')
+        for p in paramlist:
+            if p.startswith('RTP'):
+                rtp, avp, prot = p.split('/')
+                if prot == 'UDP':
+                    udp = True
+                elif prot == 'TCP':
+                    udp = False
+                else:
+                    raise ValueError
+            elif p.startswith('unicast'):
+                pass
+            elif p.startswith('client_port'):
+                _, client_port = p.split('=')
+            elif p.startswith('server_port'):
+                _, server_port = p.split('=')
+            else:
+                continue
+        return udp, client_port, server_port
+
     def cast_seq_m1(self, sock):
         data = sock.recv(1000).decode("UTF-8")
         self.logger.debug("->{}".format(data))
-        headers = data.split('\r\n')
-        cmd, url, resp = self.rtsp_parse_command(headers[0])
+        headers, body = self._split_header_body(data)
+        cmd, url, resp, seq, others = self._rtsp_parse_headers(headers)
         if cmd != 'OPTIONS':
             return False
-        s_data = self.rtsp_response_header(seq=1, res="200 OK", others=[("Public", "org.wfs.wfd1.0, SET_PARAMETER, GET_PARAMETER")])
+        s_data = self._rtsp_response_header(seq=seq, res="200 OK", others=[("Public", "org.wfs.wfd1.0, SET_PARAMETER, GET_PARAMETER")])
         self.logger.debug("<-{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
         return True
 
     def cast_seq_m2(self, sock):
-        s_data = self.rtsp_response_header(seq=100, cmd="OPTIONS", url="*", others=[('Require', 'org.wfs.wfd1.0')])
+        s_data = self._rtsp_response_header(seq=100, cmd="OPTIONS", url="*", others=[('Require', 'org.wfs.wfd1.0')])
         self.logger.debug("<-{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
         data = sock.recv(1000).decode("UTF-8")
         self.logger.debug("->{}".format(data))
-        headers = data.split('\r\n')
-        cmd, url, resp = self.rtsp_parse_command(headers[0])
-        if resp  != "200 OK":
+        headers, body = self._split_header_body(data)
+        cmd, url, resp, seq, others = self._rtsp_parse_headers(headers)
+        if seq != 100 or resp  != "200 OK":
             return False
         return True
 
     def cast_seq_m3(self, sock):
-        data = (sock.recv(1000))
+        data = sock.recv(1000).decode("UTF-8")
         self.logger.debug("->{}".format(data))
+        headers, body = self._split_header_body(data)
+        cmd, url, resp, seq, others = self._rtsp_parse_headers(headers)
+        if cmd != 'GET_PARAMETER' or url != 'rtsp://localhost/wfd1.0':
+            return False
         msg = "wfd_client_rtp_ports: RTP/AVP/UDP;unicast {} 0 mode=play\r\n".format(self.config.rtp_port)\
               + WfdVideoParameters().get_video_parameter()
-        m3resp = self.rtsp_response_header(seq=2, res="200 OK",
+        m3resp = self._rtsp_response_header(seq=seq, res="200 OK",
                                            others=[('Content-Type', 'text/parameters'),
                                                    ('Content-Length', len(msg))
                                                    ])
         m3resp += msg
         self.logger.debug("<-{}".format(m3resp))
         sock.sendall(m3resp.encode("UTF-8"))
+        return True
 
     def cast_seq_m4(self, sock):
-        data = (sock.recv(1000)).decode("UTF-8")
+        data = sock.recv(1000).decode("UTF-8")
         self.logger.debug("->{}".format(data))
-        s_data = self.rtsp_response_header(res="200 OK", seq=3)
+        headers, body = self._split_header_body(data)
+        cmd, url, resp, seq, others = self._rtsp_parse_headers(headers)
+        if cmd != "SET_PARAMETER" or url != "rtsp://localhost/wfd1.0":
+            return False
+        # FIXME: parse request body
+        s_data = self._rtsp_response_header(res="200 OK", seq=seq)
         self.logger.debug("<-{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
+        return True
 
     def cast_seq_m5(self, sock):
-        data = (sock.recv(1000))
-        self.logger.debug("->{}".format(data))  # wfd-triggered-method
-        s_data = self.rtsp_response_header(res="200 OK", seq=4)
+        data = sock.recv(1000).decode("UTF-8")
+        self.logger.debug("->{}".format(data))
+        headers, body = self._split_header_body(data)
+        cmd, url, resp, seq, others = self._rtsp_parse_headers(headers)
+        if cmd != 'SET_PARAMETER':
+            self.logger.debug("M5: got other than SET_PARAMETER request.")
+            return False
+        s_data = self._rtsp_response_header(res="200 OK", seq=seq)
         self.logger.debug("<-{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
+        return True
 
     def cast_seq_m6(self, sock):
-        m6req = self.rtsp_response_header(cmd="SETUP",
+        m6req = self._rtsp_response_header(cmd="SETUP",
                                           url="rtsp://{0:s}/wfd1.0/streamid=0".format(self.config.peeraddress),
                                           seq=101,
                                           others=[
@@ -139,28 +203,34 @@ class PiCast(threading.Thread):
                                           ])
         self.logger.debug("<-{}".format(m6req))
         sock.sendall(m6req.encode("UTF-8"))
-        data = (sock.recv(1000))
+
+        data = sock.recv(1000).decode("UTF-8")
         self.logger.debug("->{}".format(data))
-        paralist = data.decode("UTF-8").split(';')
-        serverport = [x for x in paralist if 'server_port=' in x]
-        self.logger.debug("server port {}".format(serverport))
-        serverport = serverport[-1]
-        serverport = serverport[12:17]
-        self.logger.debug("server port {}".format(serverport))
-        paralist = data.decode("UTF-8").split()
-        position = paralist.index('Session:') + 1
-        sessionid = paralist[position].split(';')[0]
-        return sessionid
+        headers, body = self._split_header_body(data)
+        cmd, url, resp, seq, others = self._rtsp_parse_headers(headers)
+        if 'Transport' in others:
+            udp, client_port, server_port = self._parse_transport_header(others['Transport'])
+            self.logger.debug("server port {}".format(server_port))
+        if 'Session' in others:
+            sessionid = others['Session'].split(';')[0]
+        return sessionid, server_port
 
     def cast_seq_m7(self, sock, sessionid):
-        m7req = self.rtsp_response_header(cmd='PLAY',
+        m7req = self._rtsp_response_header(cmd='PLAY',
                                           url='rtsp://{0:s}/wfd1.0/streamid=0'.format(self.config.peeraddress),
                                           seq=102,
                                           others=[('Session', sessionid)])
         self.logger.debug("<-{}".format(m7req))
         sock.sendall(m7req.encode("UTF-8"))
-        data = (sock.recv(1000))
+
+        data = sock.recv(1000).decode("UTF-8")
         self.logger.debug("->{}".format(data))
+        headers, body = self._split_header_body(data)
+        cmd, url, resp, seq, others = self._rtsp_parse_headers(headers)
+        if resp != "200 OK" or seq != 102:
+            return False
+        return True
+
 
     def handle_recv_err(self, e, sock, idrsock, csnum) -> int:
         err = e.args[0]
@@ -180,7 +250,7 @@ class PiCast(threading.Thread):
             else:
                 csnum = csnum + 1
                 msg = 'wfd-idr-request\r\n'
-                idrreq = self.rtsp_response_header(seq=csnum,
+                idrreq = self._rtsp_response_header(seq=csnum,
                                                    cmd="SET_PARAMETER", url="rtsp://localhost/wfd1.0",
                                                    others=[
                                                        ('Content-Length', len(msg)),
@@ -195,17 +265,15 @@ class PiCast(threading.Thread):
 
     def negotiate(self, conn) -> bool:
         self.logger.debug("---- Start negotiation ----")
-        if not self.cast_seq_m1(conn):
+        if self.cast_seq_m1(conn) and self.cast_seq_m2(conn) and self.cast_seq_m3(conn) and \
+           self.cast_seq_m4(conn) and self.cast_seq_m5(conn):
+            sessionid, server_port = self.cast_seq_m6(conn)
+            self.cast_seq_m7(conn, sessionid)
+            self.logger.info("---- Negotiation successful ----")
+            return True
+        else:
+            self.logger.info("---- Negotiation failed ----")
             return False
-        if not self.cast_seq_m2(conn):
-            return False
-        self.cast_seq_m3(conn)
-        self.cast_seq_m4(conn)
-        self.cast_seq_m5(conn)
-        sessionid = self.cast_seq_m6(conn)
-        self.cast_seq_m7(conn, sessionid)
-        self.logger.debug("---- Negotiation successful ----")
-        return True
 
     def rtspsrv(self, conn, idrsock):
         fcntl.fcntl(conn, fcntl.F_SETFL, os.O_NONBLOCK)
@@ -234,7 +302,7 @@ class PiCast(threading.Thread):
                     for entry in entrylist:
                         if re.match(r'CSeq:', entry):
                             cseq = entry.rstrip()
-                            resp = self.rtsp_response_header(seq=cseq, res="200 OK")
+                            resp = self._rtsp_response_header(seq=cseq, res="200 OK")
                             self.logger.debug("<-{}".format(resp))
                             conn.sendall(resp.encode("UTF-8"))
                             continue

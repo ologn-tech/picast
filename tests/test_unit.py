@@ -1,6 +1,5 @@
-import os
-from logging import config as LoggingConfig
 
+from picast.picast import PiCast
 from picast.video import WfdVideoParameters
 from picast.wifip2p import WifiP2PServer
 from picast.wpacli import WpaCli
@@ -243,3 +242,4 @@ def test_get_display_resolution(monkeypatch):
     assert cea == 0x0101C3
     assert vesa == 0x0208006
     assert hh == 0x00
+

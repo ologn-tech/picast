@@ -37,27 +37,33 @@ def test_connection():
 
 
 @pytest.mark.unit
-def test_parse_rtsp_header_options():
-    header = 'OPTIONS * RTSP/1.0\r\n'
-    cmd, url, resp = PiCast.rtsp_parse_command(header)
+def test_parse_header_200_OK():
+    data = "RTSP/1.0 200 OK\r\nCSeq: 1\r\n\r\n"
+    headers, body = PiCast._split_header_body(data)
+    cmd, url, resp, seq, others = PiCast._rtsp_parse_headers(headers)
+    assert cmd is None
+    assert url is None
+    assert resp == "200 OK"
+    assert seq == 1
+
+
+@pytest.mark.unit
+def test_parse_rtsp_parse_header_options():
+    data = 'OPTIONS * RTSP/1.0\r\nCSeq: 2\r\n\r\n'
+    headers, body = PiCast._split_header_body(data)
+    cmd, url, resp, seq, others = PiCast._rtsp_parse_headers(headers)
     assert cmd == 'OPTIONS'
     assert url == '*'
     assert resp is None
+    assert seq == 2
 
 
 @pytest.mark.unit
-def test_parse_rtsp_header_response_ok():
-    header = 'RTSP/1.0 200 OK\r\n'
-    cmd, url, resp = PiCast.rtsp_parse_command(header)
-    assert cmd is None
-    assert url is None
-    assert resp == '200 OK'
-
-
-@pytest.mark.unit
-def test_parse_rtsp_header_setup():
-    header = 'SETUP rtsp://192.168.173.80/wfd1.0/streamid=0 RTSP/1.0\r\n'
-    cmd, url, resp = PiCast.rtsp_parse_command(header)
+def test_parse_rtsp_parse_header_setup():
+    data = 'SETUP rtsp://192.168.173.80/wfd1.0/streamid=0 RTSP/1.0\r\nCSeq: 3\r\n\r\n'
+    headers, body = PiCast._split_header_body(data)
+    cmd, url, resp, seq, others = PiCast._rtsp_parse_headers(headers)
     assert cmd == 'SETUP'
     assert url == 'rtsp://192.168.173.80/wfd1.0/streamid=0'
     assert resp is None
+    assert seq == 3
