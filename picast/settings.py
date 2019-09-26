@@ -63,6 +63,10 @@ class Settings():
         return self._config.get('logging', 'logger')
 
     @property
+    def player(self):
+        return self._config.get('player', 'name')
+
+    @property
     def rtp_port(self):
         return self._config.getint('network', 'rtp_port')
 

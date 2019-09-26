@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import os
+import subprocess
 from logging import getLogger
 
 import gi
@@ -33,14 +34,36 @@ from gi.repository import Gst, Gtk  # noqa: E402 # isort:skip
 from picast.settings import Settings
 
 
-class GstPlayer(Gtk.Window):
+class VlcPlayer():
+
+    def __init__(self, logger='picast'):
+        self.logger = getLogger(logger)
+        self.vlc = None
+
+    def start(self):
+        self.logger.debug("Start vlc client.")
+        self.vlc = subprocess.Popen(["vlc", '--fullscreen', 'rtp://0.0.0.0:1028/wfd1.0/streamid=0'])
+
+    def stop(self):
+        if self.vlc is not None:
+            self.logger.debug("Stop vlc client.")
+            self.vlc.terminate()
+
+
+class GstPlayer():
     def __init__(self, logger='picast'):
         self.config = Settings()
         self.logger = getLogger(logger)
         Gst.init(None)
+
+    def on_message(self, bus, message):
+        pass
+
+    def start(self):
         gstcommand = "udpsrc port={0:d} caps=\"application/x-rtp, media=video\" ".format(self.config.rtp_port)
         gstcommand += "! rtph264depay ! omxh264dec ! videoconvert ! autovideosink"
         self.pipeline = Gst.parse_launch(gstcommand)
+        self.logger.debug("Parse gst pipeline.")
         self.bus = self.pipeline.get_bus()
         self.bus.add_signal_watch()
         self.bus.connect('message::eos', self.on_eos)
@@ -49,14 +72,11 @@ class GstPlayer(Gtk.Window):
         self.bus.enable_sync_message_emission()
         self.bus.connect('sync-message::element', self.on_sync_message)
         self.bus.connect('message', self.on_message)
-
-    def on_message(self, bus, message):
-        pass
-
-    def run(self):
+        self.logger.debug("Start gst player...")
         self.pipeline.set_state(Gst.State.PLAYING)
 
     def stop(self):
+        self.logger.debug("Stop gst player...")
         self.pipeline.set_state(Gst.State.NULL)
 
     def on_sync_message(self, bus, msg):

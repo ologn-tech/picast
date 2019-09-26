@@ -32,14 +32,14 @@ gi.require_version('GstVideo', '1.0')  # noqa: E402 # isort:skip
 gi.require_version('GdkX11', '3.0')  # noqa: E402 # isort:skip
 
 from picast.picast import PiCast
-from picast.player import GstPlayer
+from picast.player import GstPlayer, VlcPlayer
 from picast.settings import Settings
 from picast.wifip2p import WifiP2PServer
 
 
 def main():
     # it should call first: load configurations from ini files
-    Settings()  # FIXME: Should support specify custom config from command line
+    settings = Settings()  # FIXME: Should support specify custom config from command line
     LoggingConfig.fileConfig(os.path.join(os.path.dirname(__file__), 'logging.ini'))
 
     wifip2p = WifiP2PServer()
@@ -47,7 +47,10 @@ def main():
 
     sleep(3)
 
-    player = GstPlayer()
+    if settings.player == "gst":
+        player = GstPlayer()
+    else:
+        player = VlcPlayer()
     picast = PiCast(player=player)
     picast.start()
     picast.join()

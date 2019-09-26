@@ -99,6 +99,18 @@ class PiCast(threading.Thread):
         return headers, body
 
     @staticmethod
+    def _connect(sock: socket, remote: str, port: int) -> bool:
+        max_trial = 1200
+        for _ in range(max_trial):
+            try:
+                sock.connect((remote, port))
+            except Exception:
+                sleep(0.1)
+            else:
+                return True
+        return False
+
+    @staticmethod
     def _parse_transport_header(data):
         """ Parse Transport header value such as "Transport: RTP/AVP/UDP;unicast;client_port=1028;server_port=5000"
         """
@@ -132,13 +144,14 @@ class PiCast(threading.Thread):
         cmd, url, resp, seq, others = self._rtsp_parse_headers(headers)
         if cmd != 'OPTIONS':
             return False
-        s_data = self._rtsp_response_header(seq=seq, res="200 OK", others=[("Public", "org.wfs.wfd1.0, SET_PARAMETER, GET_PARAMETER")])
+        s_data = self._rtsp_response_header(seq=seq, res="200 OK", others=[("Public", "org.wfa.wfd1.0, SET_PARAMETER, GET_PARAMETER")])
         self.logger.debug("<-{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
         return True
 
     def cast_seq_m2(self, sock):
-        s_data = self._rtsp_response_header(seq=100, cmd="OPTIONS", url="*", others=[('Require', 'org.wfs.wfd1.0')])
+        self.csnum = 100
+        s_data = self._rtsp_response_header(seq=self.csnum, cmd="OPTIONS", url="*", others=[('Require', 'org.wfa.wfd1.0')])
         self.logger.debug("<-{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
         data = sock.recv(1000).decode("UTF-8")
@@ -194,9 +207,10 @@ class PiCast(threading.Thread):
         return True
 
     def cast_seq_m6(self, sock):
+        self.csnum += 1
         m6req = self._rtsp_response_header(cmd="SETUP",
                                           url="rtsp://{0:s}/wfd1.0/streamid=0".format(self.config.peeraddress),
-                                          seq=101,
+                                          seq=self.csnum,
                                           others=[
                                               ('Transport',
                                                'RTP/AVP/UDP;unicast;client_port={0:d}'.format(self.config.rtp_port))
@@ -208,6 +222,8 @@ class PiCast(threading.Thread):
         self.logger.debug("->{}".format(data))
         headers, body = self._split_header_body(data)
         cmd, url, resp, seq, others = self._rtsp_parse_headers(headers)
+        if seq != self.csnum:
+            return False
         if 'Transport' in others:
             udp, client_port, server_port = self._parse_transport_header(others['Transport'])
             self.logger.debug("server port {}".format(server_port))
@@ -216,9 +232,10 @@ class PiCast(threading.Thread):
         return sessionid, server_port
 
     def cast_seq_m7(self, sock, sessionid):
+        self.csnum += 1
         m7req = self._rtsp_response_header(cmd='PLAY',
                                           url='rtsp://{0:s}/wfd1.0/streamid=0'.format(self.config.peeraddress),
-                                          seq=102,
+                                          seq=self.csnum,
                                           others=[('Session', sessionid)])
         self.logger.debug("<-{}".format(m7req))
         sock.sendall(m7req.encode("UTF-8"))
@@ -227,12 +244,78 @@ class PiCast(threading.Thread):
         self.logger.debug("->{}".format(data))
         headers, body = self._split_header_body(data)
         cmd, url, resp, seq, others = self._rtsp_parse_headers(headers)
-        if resp != "200 OK" or seq != 102:
+        if resp != "200 OK" or seq != self.csnum:
             return False
         return True
 
+    def negotiate(self, conn) -> bool:
+        self.logger.debug("---- Start negotiation ----")
+        if self.cast_seq_m1(conn) and self.cast_seq_m2(conn) and self.cast_seq_m3(conn) and \
+           self.cast_seq_m4(conn) and self.cast_seq_m5(conn):
+            sessionid, server_port = self.cast_seq_m6(conn)
+            self.cast_seq_m7(conn, sessionid)
+            self.logger.info("---- Negotiation successful ----")
+            return True
+        else:
+            self.logger.info("---- Negotiation failed ----")
+            return False
 
-    def handle_recv_err(self, e, sock, idrsock, csnum) -> int:
+    def run(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            sd = ServiceDiscovery()
+            self.logger.info("Register mDNS/SD entry.")
+            sd.register()
+            self.logger.info("Start connecting...")
+            # FIXME: wait for dhcpd leased an address to new client here then initiating to connect
+            if self._connect(sock, self.config.peeraddress, self.config.rtsp_port):
+                self.logger.info("Connected to Wfd-source in {}.".format(self.config.peeraddress))
+                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as idrsock:
+                    idrsock_address = ('127.0.0.1', 0)
+                    idrsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    idrsock.bind(idrsock_address)
+                    addr, idrsockport = idrsock.getsockname()
+                    self.idrsockport = str(idrsockport)
+                    if self.negotiate(sock):
+                        self.player.start()
+                        fcntl.fcntl(sock, fcntl.F_SETFL, os.O_NONBLOCK)
+                        fcntl.fcntl(idrsock, fcntl.F_SETFL, os.O_NONBLOCK)
+                        self.rtspsrv(sock, idrsock)
+            else:
+                self.logger.debug("Fails to connect. Wait for peer...")
+                sleep(30)
+
+    def rtspsrv(self, conn, idrsock):
+        self.teardown = False
+        while True:
+            try:
+                data = conn.recv(1000).decode("UTF-8")
+            except socket.error as e:
+                self.handle_recv_err(e, conn, idrsock)
+            else:
+                self.watchdog = 0
+                self.logger.debug("->{}".format(data))
+                headers, body = self._split_header_body(data)
+                cmd, url, resp, seq, others = self._rtsp_parse_headers(headers)
+                if cmd == "GET_PARAMETER" and url == "rtsp://localhost/wfd1.0":
+                    resp_msg = self._rtsp_response_header(seq=seq, resp="200 OK")
+                    conn.sendall(resp_msg.encode("UTF-8"))
+                elif cmd == "SET_PARAMETER" and 'wfd_trigger_method: TEARDOWN' in body:
+                    resp_msg = self._rtsp_response_header(seq=seq, resp="200 OK")
+                    conn.sendall(resp_msg.encode("UTF-8"))
+                    self.logger.debug("Got TEARDOWN request.")
+                    m5_msg = self._rtsp_response_header(seq=self.csnum, cmd="TEARDOWN",
+                                                        url="rtsp://localhost/wfd1.0")
+                    conn.sendall(m5_msg.encode("UTF-8"))
+                    self.teardown = True
+                    self.player.stop()
+                elif self.teardown and cmd is None and resp == "200 OK":
+                    break
+                else:
+                    continue
+
+    def handle_recv_err(self, e, sock, idrsock) -> int:
         err = e.args[0]
         if err == errno.EAGAIN or err == errno.EWOULDBLOCK:
             try:
@@ -248,9 +331,9 @@ class PiCast(threading.Thread):
                 else:
                     self.logger.debug("socket error.")
             else:
-                csnum = csnum + 1
+                self.csnum += 1
                 msg = 'wfd-idr-request\r\n'
-                idrreq = self._rtsp_response_header(seq=csnum,
+                idrreq = self._rtsp_response_header(seq=self.csnum,
                                                    cmd="SET_PARAMETER", url="rtsp://localhost/wfd1.0",
                                                    others=[
                                                        ('Content-Length', len(msg)),
@@ -261,83 +344,3 @@ class PiCast(threading.Thread):
                 sock.sendall(idrreq.encode("UTF-8"))
         else:
             self.logger.debug("Exit becuase of socket error.")
-        return csnum
-
-    def negotiate(self, conn) -> bool:
-        self.logger.debug("---- Start negotiation ----")
-        if self.cast_seq_m1(conn) and self.cast_seq_m2(conn) and self.cast_seq_m3(conn) and \
-           self.cast_seq_m4(conn) and self.cast_seq_m5(conn):
-            sessionid, server_port = self.cast_seq_m6(conn)
-            self.cast_seq_m7(conn, sessionid)
-            self.logger.info("---- Negotiation successful ----")
-            return True
-        else:
-            self.logger.info("---- Negotiation failed ----")
-            return False
-
-    def rtspsrv(self, conn, idrsock):
-        fcntl.fcntl(conn, fcntl.F_SETFL, os.O_NONBLOCK)
-        fcntl.fcntl(idrsock, fcntl.F_SETFL, os.O_NONBLOCK)
-        csnum = 102
-        while True:
-            try:
-                data = (conn.recv(1000)).decode("UTF-8")
-            except socket.error as e:
-                watchdog, csnum = self.handle_recv_err(e, conn, idrsock, csnum)
-            else:
-                self.logger.debug("->{}".format(data))
-                self.watchdog = 0
-                if len(data) == 0 or 'wfd_trigger_method: TEARDOWN' in data:
-                    self.player.stop()
-                    sleep(1)
-                    break
-                elif 'wfd_video_formats' in data:
-                    self.logger.info('start player')
-                    self.player.start()
-                messagelist = data.splitlines()
-                singlemessagelist = [x for x in messagelist if ('GET_PARAMETER' in x or 'SET_PARAMETER' in x)]
-                self.logger.debug(singlemessagelist)
-                for singlemessage in singlemessagelist:
-                    entrylist = singlemessage.splitlines()
-                    for entry in entrylist:
-                        if re.match(r'CSeq:', entry):
-                            cseq = entry.rstrip()
-                            resp = self._rtsp_response_header(seq=cseq, res="200 OK")
-                            self.logger.debug("<-{}".format(resp))
-                            conn.sendall(resp.encode("UTF-8"))
-                            continue
-
-    @staticmethod
-    def connect(sock: socket, remote: str, port: int) -> bool:
-        max_trial = 1200
-        for _ in range(max_trial):
-            try:
-                sock.connect((remote, port))
-            except Exception:
-                sleep(0.1)
-            else:
-                return True
-        return False
-
-    def run(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            sd = ServiceDiscovery()
-            self.logger.info("Register mDNS/SD entry.")
-            sd.register()
-            self.logger.info("Start connecting...")
-            # FIXME: wait for dhcpd leased an address to new client here then initiating to connect
-            if self.connect(sock, self.config.peeraddress, self.config.rtsp_port):
-                self.logger.info("Connected to Wfd-source in {}.".format(self.config.peeraddress))
-                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as idrsock:
-                    idrsock_address = ('127.0.0.1', 0)
-                    idrsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                    idrsock.bind(idrsock_address)
-                    addr, idrsockport = idrsock.getsockname()
-                    self.idrsockport = str(idrsockport)
-                    if self.negotiate(sock):
-                        self.rtspsrv(sock, idrsock)
-            else:
-                self.logger.debug("Fails to connect. Wait for peer...")
-                sleep(30)
