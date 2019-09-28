@@ -42,6 +42,8 @@ class MockRtspServer(threading.Thread):
         # M2
         m2 = conn.recv(1000).decode("UTF-8")
         if m2 != "OPTIONS * RTSP/1.0\r\nCSeq: 100\r\nRequire: org.wfa.wfd1.0\r\n\r\n":
+            resp_400 = "RTSP/1.0 400 Bad Request\r\nCSeq: 100\r\n\r\n"
+            conn.sendall(resp_400.encode("UTF-8"))
             pytest.fail("M2 request failure: {}".format(m2))
         m2_resp = "RTSP/1.0 200 OK\r\nCSeq: 100\r\nPublic: org.wfa.wfd1.0, SETUP, TEARDOWN, PLAY, PAUSE, GET_PARAMETER, SET_PARAMETER\r\n\r\n"
         conn.sendall(m2_resp.encode("UTF-8"))
@@ -58,7 +60,7 @@ class MockRtspServer(threading.Thread):
                       "wfd_video_formats: 00 00 01 01 00000001 00000000 00000000 00 0000 0000 00 none none\r\n" \
                       "wfd_audio_codecs: LPCM 00000002 00\r\nwfd_3d_video_formats: none\r\n" \
                       "wfd_content_protection: none\r\nwfd_display_edid: none\r\nwfd_coupled_sink: none\r\n\r\n":
-            resp_400 = "RTSP/1.0 400 Bad Request\r\n\r\n"
+            resp_400 = "RTSP/1.0 400 Bad Request\r\nCSeq: 1\r\n\r\n"
             conn.sendall(resp_400.encode("UTF-8"))
             pytest.fail("M3 bad request: {}".format(m3_resp))
 
@@ -78,13 +80,13 @@ class MockRtspServer(threading.Thread):
         conn.sendall(m5.encode("UTF-8"))
         m5_resp = conn.recv(1000).decode("UTF-8")
         if m5_resp != "RTSP/1.0 200 OK\r\nCSeq: 3\r\n\r\n":
-            pytest.fail("M5 response failure: {}".format(m5_resp))
+            pytest.fail("M5 bad response: {}".format(m5_resp))
 
         # M6
         m6 = conn.recv(1000).decode("UTF-8")
         if m6 != "SETUP rtsp://192.168.173.80/wfd1.0/streamid=0 RTSP/1.0\r\nCSeq: 101\r\n" \
                      "Transport: RTP/AVP/UDP;unicast;client_port=1028\r\n\r\n":
-            resp_400 = "RTSP/1.0 400 Bad Request\r\n\r\n"
+            resp_400 = "RTSP/1.0 400 Bad Request\r\nCSeq: 101\r\n\r\n"
             conn.sendall(resp_400.encode("UTF-8"))
             pytest.fail("M6 request failure: {}".format(m6))
         m6_resp = "RTSP/1.0 200 OK\r\nCSeq: 101\r\nSession: 7C9C5678;timeout=30\r\n" \
@@ -94,7 +96,7 @@ class MockRtspServer(threading.Thread):
         # M7
         m7 = conn.recv(1000).decode("UTF-8")
         if m7 != "PLAY rtsp://192.168.173.80/wfd1.0/streamid=0 RTSP/1.0\r\nCSeq: 102\r\nSession: 7C9C5678\r\n\r\n":
-            resp_400 = "RTSP/1.0 400 Bad Request\r\n\r\n"
+            resp_400 = "RTSP/1.0 400 Bad Request\r\nCSeq: 102\r\n\r\n"
             conn.sendall(resp_400.encode("UTF-8"))
             pytest.fail("M7 request failure: {}".format(m7))
         m7_resp = "RTSP/1.0 200 OK\r\nCSeq: 102\r\n\r\n"
