@@ -21,7 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import errno
 import fcntl
 import os
-import re
 import socket
 import threading
 from logging import getLogger
@@ -32,14 +31,10 @@ from picast.settings import Settings
 from picast.video import WfdVideoParameters
 
 
-class PiCastException(Exception):
-    pass
-
-
-class PiCast(threading.Thread):
+class RtspServer(threading.Thread):
 
     def __init__(self, player, logger='picast'):
-        super(PiCast, self).__init__(name='picast-rtsp-0', daemon=True)
+        super(RtspServer, self).__init__(name='rtsp-server-0', daemon=True)
         self.config = Settings()
         self.logger = getLogger(logger)
         self.player = player

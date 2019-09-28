@@ -4,7 +4,7 @@ import threading
 
 import pytest
 
-from picast.picast import PiCast
+from picast.rtspserver import RtspServer
 
 
 class MockServer(threading.Thread):
@@ -31,7 +31,7 @@ def test_connection():
     server = MockServer(port)
     server.start()
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    assert PiCast._connect(sock, '127.0.0.1', port)
+    assert RtspServer._connect(sock, '127.0.0.1', port)
     sock.close()
     server.join()
 
@@ -39,8 +39,8 @@ def test_connection():
 @pytest.mark.unit
 def test_parse_header_200_OK():
     data = "RTSP/1.0 200 OK\r\nCSeq: 1\r\n\r\n"
-    headers, body = PiCast._split_header_body(data)
-    cmd, url, resp, seq, others = PiCast._rtsp_parse_headers(headers)
+    headers, body = RtspServer._split_header_body(data)
+    cmd, url, resp, seq, others = RtspServer._rtsp_parse_headers(headers)
     assert cmd is None
     assert url is None
     assert resp == "200 OK"
@@ -50,8 +50,8 @@ def test_parse_header_200_OK():
 @pytest.mark.unit
 def test_parse_rtsp_parse_header_options():
     data = 'OPTIONS * RTSP/1.0\r\nCSeq: 2\r\n\r\n'
-    headers, body = PiCast._split_header_body(data)
-    cmd, url, resp, seq, others = PiCast._rtsp_parse_headers(headers)
+    headers, body = RtspServer._split_header_body(data)
+    cmd, url, resp, seq, others = RtspServer._rtsp_parse_headers(headers)
     assert cmd == 'OPTIONS'
     assert url == '*'
     assert resp is None
@@ -61,8 +61,8 @@ def test_parse_rtsp_parse_header_options():
 @pytest.mark.unit
 def test_parse_rtsp_parse_header_setup():
     data = 'SETUP rtsp://192.168.173.80/wfd1.0/streamid=0 RTSP/1.0\r\nCSeq: 3\r\n\r\n'
-    headers, body = PiCast._split_header_body(data)
-    cmd, url, resp, seq, others = PiCast._rtsp_parse_headers(headers)
+    headers, body = RtspServer._split_header_body(data)
+    cmd, url, resp, seq, others = RtspServer._rtsp_parse_headers(headers)
     assert cmd == 'SETUP'
     assert url == 'rtsp://192.168.173.80/wfd1.0/streamid=0'
     assert resp is None

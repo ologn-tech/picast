@@ -23,7 +23,7 @@ import subprocess
 from logging import getLogger
 from typing import List, Tuple, Optional
 
-from picast.picast import PiCastException
+from picast.exceptions import WpaException
 
 
 class WpaCli:
@@ -44,37 +44,37 @@ class WpaCli:
         self.logger.debug("wpa_cli p2p_find type=progressive")
         status = self.cmd("p2p_find", "type=progressive")
         if 'OK' not in status:
-            raise PiCastException("Fail to start p2p find.")
+            raise WpaException("Fail to start p2p find.")
 
     def stop_p2p_find(self):
         self.logger.debug("wpa_cli p2p_stop_find")
         status = self.cmd("p2p_stop_find")
         if 'OK' not in status:
-            raise PiCastException("Fail to stop p2p find.")
+            raise WpaException("Fail to stop p2p find.")
 
     def set_device_name(self, name:str):
         self.logger.debug("wpa_cli set device_name {}".format(name))
         status = self.cmd("set", "device_name", name)
         if 'OK' not in status:
-            raise PiCastException("Fail to set device name {}".format(name))
+            raise WpaException("Fail to set device name {}".format(name))
 
     def set_device_type(self, type):
         self.logger.debug("wpa_cli set device_type {}".format(type))
         status = self.cmd("set", "device_type", type)
         if 'OK' not in status:
-            raise PiCastException("Fail to set device type {}".format(type))
+            raise WpaException("Fail to set device type {}".format(type))
 
     def set_p2p_go_ht40(self):
         self.logger.debug("wpa_cli set p2p_go_ht40 1")
         status = self.cmd("set", "p2p_go_ht40", "1")
         if 'OK' not in status:
-            raise PiCastException("Fail to set p2p_go_ht40")
+            raise WpaException("Fail to set p2p_go_ht40")
 
     def wfd_subelem_set(self, key:int, val:str):
         self.logger.debug("wpa_cli wfd_subelem_set {0:d} {1:s}".format(key, val))
         status = self.cmd("wfd_subelem_set", "{0:d}".format(key), val)
         if 'OK' not in status:
-            raise PiCastException("Fail to wfd_subelem_set.")
+            raise WpaException("Fail to wfd_subelem_set.")
 
     def p2p_group_add(self, name:str):
         self.logger.debug("wpa_cli p2p_group_add {}".format(name))

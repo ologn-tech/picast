@@ -24,7 +24,7 @@ from logging import getLogger
 from time import sleep
 
 from picast.dhcpd import Dhcpd
-from picast.picast import PiCastException
+from picast.exceptions import WpaException
 from picast.settings import Settings
 from picast.wpacli import WpaCli
 
@@ -100,7 +100,7 @@ class WifiP2PServer(threading.Thread):
             sleep(3)
             p2p_interface = wpacli.get_p2p_interface()
             if p2p_interface is None:
-                raise PiCastException("Can not create P2P Wifi interface.")
+                raise WpaException("Can not create P2P Wifi interface.")
             self.logger.info("Start p2p interface: {} address {}".format(p2p_interface, self.config.myaddress))
             os.system("sudo ifconfig {} {}".format(p2p_interface, self.config.myaddress))
         self.wlandev = p2p_interface

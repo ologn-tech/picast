@@ -31,7 +31,7 @@ gi.require_version('Gtk', '3.0')  # noqa: E402 # isort:skip
 gi.require_version('GstVideo', '1.0')  # noqa: E402 # isort:skip
 gi.require_version('GdkX11', '3.0')  # noqa: E402 # isort:skip
 
-from picast.picast import PiCast
+from picast.rtspserver import RtspServer
 from picast.player import GstPlayer, VlcPlayer
 from picast.settings import Settings
 from picast.wifip2p import WifiP2PServer
@@ -51,7 +51,7 @@ def main():
         player = GstPlayer()
     else:
         player = VlcPlayer()
-    picast = PiCast(player=player)
+    picast = RtspServer(player=player)
     picast.start()
     picast.join()
 

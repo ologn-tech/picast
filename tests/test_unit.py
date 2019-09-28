@@ -1,5 +1,5 @@
 
-from picast.picast import PiCast
+from picast.rtspserver import RtspServer
 from picast.video import WfdVideoParameters
 from picast.wifip2p import WifiP2PServer
 from picast.wpacli import WpaCli

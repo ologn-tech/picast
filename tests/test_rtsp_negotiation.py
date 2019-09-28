@@ -5,7 +5,7 @@ from time import sleep
 
 import pytest
 
-from picast.picast import PiCast
+from picast.rtspserver import RtspServer
 from picast.video import WfdVideoParameters
 
 
@@ -154,14 +154,14 @@ def test_rtsp_negotiation(monkeypatch, rtsp_mock_server):
     def rtspsrvmock(self, sock, idrsock):
         return
 
-    monkeypatch.setattr(PiCast, "_connect", mockretrun)
-    monkeypatch.setattr(PiCast, "rtspsrv", rtspsrvmock)
+    monkeypatch.setattr(RtspServer, "_connect", mockretrun)
+    monkeypatch.setattr(RtspServer, "rtspsrv", rtspsrvmock)
     monkeypatch.setattr(WfdVideoParameters, "get_video_parameter", videomock)
 
     rtsp_mock_server.start()
     sleep(0.5)
     player = MockPlayer()
-    picast = PiCast(player)
+    picast = RtspServer(player)
     picast.start()
     picast.join()
     rtsp_mock_server.join()
