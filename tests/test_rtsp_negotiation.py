@@ -36,7 +36,7 @@ class MockRtspServer(threading.Thread):
         m1 = "OPTIONS * RTSP/1.0\r\nCSeq: 0\r\nRequire: org.wfa.wfd1.0\r\n\r\n"
         conn.sendall(m1.encode("UTF-8"))
         m1_resp = conn.recv(1000).decode("UTF-8")
-        if m1_resp != "RTSP/1.0 200 OK\r\nCSeq: 0\r\nPublic: org.wfs.wfd1.0, SET_PARAMETER, GET_PARAMETER\r\n\r\n":
+        if m1_resp != "RTSP/1.0 200 OK\r\nCSeq: 0\r\nPublic: org.wfa.wfd1.0, SET_PARAMETER, GET_PARAMETER\r\n\r\n":
             pytest.fail("M1 response failure: {}".format(m1_resp))
 
         # M2
