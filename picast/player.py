@@ -29,7 +29,7 @@ gi.require_version('Gst', '1.0')  # noqa: E402 # isort:skip
 gi.require_version('Gtk', '3.0')  # noqa: E402 # isort:skip
 gi.require_version('GstVideo', '1.0')  # noqa: E402 # isort:skip
 gi.require_version('GdkX11', '3.0')  # noqa: E402 # isort:skip
-from gi.repository import Gst, Gtk  # noqa: E402 # isort:skip
+from gi.repository import GObject, Gst, Gtk  # noqa: E402 # isort:skip
 
 from picast.settings import Settings
 
@@ -56,21 +56,28 @@ class GstPlayer():
         self.logger = getLogger(logger)
         Gst.init(None)
 
-    def on_message(self, bus, message):
-        pass
-
     def start(self):
-        gstcommand = "udpsrc port={0:d} caps=\"application/x-rtp, media=video\" ".format(self.config.rtp_port)
-        gstcommand += "! rtph264depay ! omxh264dec ! videoconvert ! autovideosink"
-        self.pipeline = Gst.parse_launch(gstcommand)
-        self.logger.debug("Parse gst pipeline.")
+        self.pipeline = Gst.Pipeline()
+
+        src = Gst.ElementFactory.make('udpsrc')
+        src.set_property('port', self.config.rtp_port)
+        src.set_property('caps', "application/x-rtp, media=video")
+
+        h264 = Gst.ElementFactory.make('rtph264depay')
+        omxdecode = Gst.ElementFactory.make('omxh264dec')
+        vconv = Gst.ElementFactory.make('videoconvert')
+        sink = Gst.ElementFactory.make('autovideosink')
+
+        for ele in [src, h264, omxdecode, vconv, sink]:
+            self.pipeline.add(ele)
+
+        src.link(h264)
+        h264.link(omxdecode)
+        omxdecode.link(vconv)
+        vconv.link(sink)
+
         self.bus = self.pipeline.get_bus()
         self.bus.add_signal_watch()
-        self.bus.connect('message::eos', self.on_eos)
-        self.bus.connect('message::error', self.on_error)
-
-        self.bus.enable_sync_message_emission()
-        self.bus.connect('sync-message::element', self.on_sync_message)
         self.bus.connect('message', self.on_message)
         self.logger.debug("Start gst player...")
         self.pipeline.set_state(Gst.State.PLAYING)
@@ -79,18 +86,19 @@ class GstPlayer():
         self.logger.debug("Stop gst player...")
         self.pipeline.set_state(Gst.State.NULL)
 
-    def on_sync_message(self, bus, msg):
-        if msg.get_structure().get_name() == 'prepare-window-handle':
-            if hasattr(self, 'xid'):
-                msg.src.set_window_handle(self.xid)
+    def on_message(self, bus, message):
+        mtype = message.type
+        if mtype == Gst.MessageType.EOS:
+            self.pipeline.seek_simple(
+                Gst.Format.TIME,
+                Gst.SeekFlags.FLUSH | Gst.SeekFlags.KEY_UNIT,
+                0
+            )
+        elif mtype == Gst.MessageType.ERROR:
+            if message.get_structure().get_name() == 'prepare-window-handle':
+                if hasattr(self, 'xid'):
+                    message.src.set_window_handle(self.xid)
+        elif mtype == Gst.MessageType.WARNING:
+            self.logger.debug('on_error():{}'.format(message.parse_error()))
 
-    def on_eos(self, bus, msg):
-        self.logger.debug('on_eos(): seeking to start of video')
-        self.pipeline.seek_simple(
-            Gst.Format.TIME,
-            Gst.SeekFlags.FLUSH | Gst.SeekFlags.KEY_UNIT,
-            0
-        )
-
-    def on_error(self, bus, msg):
-        self.logger.debug('on_error():{}'.format(msg.parse_error()))
+        return True
