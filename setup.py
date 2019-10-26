@@ -20,7 +20,7 @@ setup(name='picast',
       author='Hioshi Miura',
       author_email='miurahr@linux.com',
       packages=['picast'],
-      requires=['PyGObject', 'zeroconf'],
+      requires=['PyGObject', 'pyyaml', 'zeroconf'],
       scripts=['bin/picast'],
       classifiers=[
           'Development Status :: 2 - Pre-Alpha',
