@@ -37,30 +37,21 @@ class WfdVideoParameters:
             self.resolutions = json.load(j)[0]
 
     def get_video_parameter(self) -> str:
-        # audio_codec: LPCM:0x01, AAC:0x02, AC3:0x04
-        # audio_sampling_frequency: 44.1khz:1, 48khz:2
-        # LPCM: 44.1kHz, 16b; 48 kHZ,16b
-        # AAC: 48 kHz, 16b, 2 channels; 48kHz,16b, 4 channels, 48 kHz,16b,6 channels
-        # AAC 00000001 00  : 2 ch AAC 48kHz
-        msg = 'wfd_audio_codecs: AAC 00000001 00, LPCM 00000002 00\r\n'
         # wfd_video_formats: <native_resolution: 0x20>, <preferred>, <profile>, <level>,
         #                    <cea>, <vesa>, <hh>, <latency>, <min_slice>, <slice_enc>, <frame skipping support>
         #                    <max_hres>, <max_vres>
         # native: index in CEA support.
         # preferred-display-mode-supported: 0 or 1
-        # profile: Constrained High Profile: 0x02, Constraint Baseline Profile: 0x01
+        # profile: Constrained High Profile: 0x02, or Constraint Baseline Profile: 0x01, only one bit set
         # level: H264 level 3.1: 0x01, 3.2: 0x02, 4.0: 0x04,4.1:0x08, 4.2=0x10
         #   3.2: 720p60,  4.1: FullHD@24, 4.2: FullHD@60
         native = 0x06
         preferred = 0
-        profile = 0x02 | 0x01
+        profile = 0x02
         level = 0x02
         cea, vesa, hh = self.get_display_resolutions()
-        msg += 'wfd_video_formats: {0:02X} {1:02X} {2:02X} {3:02X} {4:08X} {5:08X} {6:08X} 00 0000 0000 00 none none\r\n' \
+        return '{0:02X} {1:02X} {2:02X} {3:02X} {4:08X} {5:08X} {6:08X} 00 0000 0000 00 none none\r\n' \
                .format(native, preferred, profile, level, cea, vesa, hh)
-        msg += 'wfd_3d_video_formats: none\r\nwfd_coupled_sink: none\r\nwfd_display_edid: none\r\nwfd_connector_type: 05\r\n'
-        msg += 'wfd_uibc_capability: none\r\nwfd_standby_resume_capability: none\r\nwfd_content_protection: none\r\n'
-        return msg
 
     class TvModes(enum.Enum):
         CEA = "-m CEA -j"
