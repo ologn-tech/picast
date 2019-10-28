@@ -171,7 +171,7 @@ class RtspServer(threading.Thread):
         # AAC 00000001 00  : 2 ch AAC 48kHz
         msg = 'wfd_audio_codecs: AAC 00000001 00, LPCM 00000002 00\r\n'
         msg += "wfd_client_rtp_ports: RTP/AVP/UDP;unicast {} 0 mode=play\r\n".format(self.config.rtp_port)
-        msg += 'wfd_video_formats: {}'.format(WfdVideoParameters().get_video_parameter())
+        msg += 'wfd_video_formats: {}\r\n'.format(WfdVideoParameters().get_video_parameter())
         msg += 'wfd_3d_video_formats: none\r\n'
         msg += 'wfd_coupled_sink: none\r\n'
         msg += 'wfd_display_edid: none\r\n'

@@ -50,7 +50,7 @@ class WfdVideoParameters:
         profile = 0x02
         level = 0x02
         cea, vesa, hh = self.get_display_resolutions()
-        return '{0:02X} {1:02X} {2:02X} {3:02X} {4:08X} {5:08X} {6:08X} 00 0000 0000 00 none none\r\n' \
+        return '{0:02X} {1:02X} {2:02X} {3:02X} {4:08X} {5:08X} {6:08X} 00 0000 0000 00 none none' \
                .format(native, preferred, profile, level, cea, vesa, hh)
 
     class TvModes(enum.Enum):

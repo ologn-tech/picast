@@ -14,11 +14,7 @@ def test_get_video_parameter(monkeypatch):
 
     monkeypatch.setattr(WfdVideoParameters, "get_display_resolutions", mockreturn)
 
-    expected = "wfd_audio_codecs: AAC 00000001 00, LPCM 00000002 00\r\n" \
-               "wfd_video_formats: 06 00 03 02 00000141 08288A0A 00000000 00 0000 0000 00 none none\r\n" \
-               "wfd_3d_video_formats: none\r\nwfd_coupled_sink: none\r\nwfd_display_edid: none\r\n" \
-               "wfd_connector_type: 05\r\nwfd_uibc_capability: none\r\nwfd_standby_resume_capability: none\r\n" \
-               "wfd_content_protection: none\r\n"
+    expected = "06 00 02 02 00000141 08288A0A 00000000 00 0000 0000 00 none none"
     wvp = WfdVideoParameters()
     assert wvp.get_video_parameter() == expected
 
