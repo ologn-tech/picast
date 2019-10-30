@@ -28,8 +28,8 @@ from logging import getLogger
 from time import sleep
 
 from picast.discovery import ServiceDiscovery
-from picast.settings import PlatformType, Settings
-from picast.video import GenericVideo, RasberryPiVideo  # noqa: F401
+from picast.settings import Settings
+from picast.video import RasberryPiVideo
 
 
 class RtspServer(threading.Thread):
