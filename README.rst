@@ -79,6 +79,7 @@ Use "12345678" for a WPS PIN number.
 It is recommended to initiate the termination of the receiver on the source side.
 
 After Pi connects to the source, it has an IP address of ``192.168.173.80``
+These parameters are configured in `settings.ini`.
 
 
 Autostart
@@ -90,6 +91,12 @@ Edit /home/pi/.config/lxsessions/LXDE/autostart
 
     @xscreensaver -no-splash
     @lxterminal -l -e /home/pi/picast/bin/picast
+
+
+Debug
+-----
+
+There is a debug log at /var/tmp/picast.log. It is configured in `logging.ini`.
 
 
 Known issues
