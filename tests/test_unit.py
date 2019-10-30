@@ -20,7 +20,7 @@ def test_get_video_parameter(monkeypatch):
 
     monkeypatch.setattr(RasberryPiVideo, "_get_display_resolutions", mockreturn)
 
-    expected = "06 00 01 01 000101C3 00208006 00000000 00 0000 0000 00 none none"
+    expected = "06 00 01 10 000101C3 00208006 00000000 00 0000 0000 00 none none"
     wvp = RasberryPiVideo()
     assert wvp.get_wfd_video_formats() == expected
 
@@ -212,6 +212,8 @@ def test_tvservice_cea(monkeypatch):
     param = v._retrieve_tvservice(RasberryPiVideo.TvModes.CEA)
     assert param[0]["code"] == 1
     assert param[1]["width"] == 720
+    assert param[2]["height"] == 480
+    assert param[3]["rate"] == 60
 
 
 @pytest.mark.unit

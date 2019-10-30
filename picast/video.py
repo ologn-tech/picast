@@ -28,48 +28,38 @@ from logging import getLogger
 from picast.settings import Settings
 
 
-class Video:
-    """Base class to populate video parameters."""
+class GenericVideo:
+
+    def __init__(self):
+        self.native = 0x06  # type: int
+        self.preferred = 0  # type: int
+        self.profile = 0x01  # type: int
+        self.level = 0x10  # type: int
+        self.cea = 0x00ffffff  # type: int
+        self.vesa = 0x00ffffff  # type: int
+        self.hh = 0x00ff  # type: int
+
+    def get_wfd_video_formats(self) -> str:
+        return '{0:02X} {1:02X} {2:02X} {3:02X} {4:08X} {5:08X} {6:08X} 00 0000 0000 00 none none' \
+            .format(self.native, self.preferred, self.profile, self.level, self.cea, self.vesa, self.hh)
+
+
+class RasberryPiVideo:
+    """Video parameters from Raspberry Pi specific command."""
 
     def __init__(self):
         self.config = Settings()
         self.native = 0x06
         self.preferred = 0
-        self.profile = 0x02
-        self.level = 0x02
-        self.cea = 0x00ffffff
-        self.vesa = 0x00ffffff
-        self.hh = 0x00ff
-
-    def get_wfd_video_formats(self) -> str:
-        # wfd_video_formats: <native_resolution: 0x20>, <preferred>, <profile>, <level>,
-        #                    <cea>, <vesa>, <hh>, <latency>, <min_slice>, <slice_enc>, <frame skipping support>
-        #                    <max_hres>, <max_vres>
-        # native: index in CEA support.
-        # preferred-display-mode-supported: 0 or 1
-        # profile: Constrained High Profile: 0x02, or Constraint Baseline Profile: 0x01, only one bit set
-        # level: H264 level 3.1: 0x01, 3.2: 0x02, 4.0: 0x04,4.1:0x08, 4.2=0x10
-        #   3.2: 720p60,  4.1: FullHD@24, 4.2: FullHD@60
-        return '{0:02X} {1:02X} {2:02X} {3:02X} {4:08X} {5:08X} {6:08X} 00 0000 0000 00 none none' \
-               .format(self.native, self.preferred, self.profile, self.level, self.cea, self.vesa, self.hh)
-
-
-class GenericVideo(Video):
-    pass
-
-
-class RasberryPiVideo(Video):
-    """Utility class to retrive video parameters from Raspberry Pi specific command."""
-
-    def __init__(self):
-        super(RasberryPiVideo, self).__init__()
-        self.native = 0x06
-        self.preferred = 0
         self.profile = 0x01
-        self.level = 0x01
+        self.level = 0x10
         with open(os.path.join(os.path.dirname(__file__), 'resolutions.json'), 'r') as j:
             self.resolutions = json.load(j)[0]
         self._get_display_resolutions()
+
+    def get_wfd_video_formats(self) -> str:
+        return '{0:02X} {1:02X} {2:02X} {3:02X} {4:08X} {5:08X} {6:08X} 00 0000 0000 00 none none' \
+            .format(self.native, self.preferred, self.profile, self.level, self.cea, self.vesa, self.hh)
 
     class TvModes(enum.Enum):
         CEA = "-m CEA -j"

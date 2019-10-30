@@ -29,7 +29,7 @@ from time import sleep
 
 from picast.discovery import ServiceDiscovery
 from picast.settings import PlatformType, Settings
-from picast.video import GenericVideo, RasberryPiVideo, Video  # noqa: F401
+from picast.video import GenericVideo, RasberryPiVideo  # noqa: F401
 
 
 class RtspServer(threading.Thread):
@@ -42,10 +42,7 @@ class RtspServer(threading.Thread):
         self.watchdog = 0
         self.csnum = 0
         self.daemon = True
-        if self.config == PlatformType.RaspberryPi:
-            self.video = RasberryPiVideo()  # type: Video
-        else:
-            self.video = GenericVideo()
+        self.video = RasberryPiVideo()
         self.wfd_parameters = self.config.get_wfd_parameters()
         self.wfd_video_formats = self.video.get_wfd_video_formats()
 

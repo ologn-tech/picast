@@ -62,7 +62,7 @@ class MockRtspClient(threading.Thread):
         conn.sendall(m3.encode("UTF-8"))
         m3_resp = conn.recv(1000).decode("UTF-8")
         if m3_resp != "RTSP/1.0 200 OK\r\nCSeq: 1\r\nContent-Type: text/parameters\r\nContent-Length: 304\r\n\r\n" \
-                      "wfd_video_formats: 06 00 02 02 00FFFFFF 00FFFFFF 000000FF 00 0000 0000 00 none none\r\n" \
+                      "wfd_video_formats: 06 00 01 10 000101C3 00208006 00000000 00 0000 0000 00 none none\r\n" \
                       "wfd_audio_codecs: AAC 00000001 00, LPCM 00000002 00\r\n" \
                       "wfd_3d_video_formats: none\r\n" \
                       "wfd_content_protection: none\r\n" \
@@ -170,14 +170,15 @@ def test_rtsp_negotiation(monkeypatch, rtsp_mock_client):
         return True
 
     def videomock(self):
-        return "00 00 01 01 00000001 00000000 00000000 00 0000 0000 00 none none"
+        return "06 00 01 10 000101C3 00208006 00000000 00 0000 0000 00 none none"
 
-    def rtspsrvmock(self, sock, idrsock):
+    def nonemock(self, *args):
         return
 
     monkeypatch.setattr(RtspServer, "_connect", mockretrun)
-    monkeypatch.setattr(RtspServer, "rtspsrv", rtspsrvmock)
+    monkeypatch.setattr(RtspServer, "rtspsrv", nonemock)
     monkeypatch.setattr(RasberryPiVideo, "get_wfd_video_formats", videomock)
+    monkeypatch.setattr(RasberryPiVideo, "_get_display_resolutions", nonemock)
 
     rtsp_mock_client.start()
     sleep(0.5)
