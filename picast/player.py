@@ -64,7 +64,7 @@ class GstPlayer():
         src.set_property('caps', "application/x-rtp, media=video")
 
         h264 = Gst.ElementFactory.make('rtph264depay')
-        omxdecode = Gst.ElementFactory.make('omxh264dec')
+        omxdecode = Gst.ElementFactory.make(self.config.gst_decoder)
         vconv = Gst.ElementFactory.make('videoconvert')
         sink = Gst.ElementFactory.make('autovideosink')
 

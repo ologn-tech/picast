@@ -1,22 +1,28 @@
 
 from picast.rtspserver import RtspServer
-from picast.video import WfdVideoParameters
+from picast.video import RasberryPiVideo
 from picast.wifip2p import WifiP2PServer
 from picast.wpacli import WpaCli
 
 import pytest
 
 
+def _get_display_resolutions_mock(obj):
+    obj.cea = 0x0101C3
+    obj.vesa = 0x0208006
+    obj.hh = 0x00
+
+
 @pytest.mark.unit
 def test_get_video_parameter(monkeypatch):
     def mockreturn(self):
-        return 0x0141, 0x08288a0a, 0x0
+        return _get_display_resolutions_mock(self)
 
-    monkeypatch.setattr(WfdVideoParameters, "get_display_resolutions", mockreturn)
+    monkeypatch.setattr(RasberryPiVideo, "_get_display_resolutions", mockreturn)
 
-    expected = "06 00 02 02 00000141 08288A0A 00000000 00 0000 0000 00 none none"
-    wvp = WfdVideoParameters()
-    assert wvp.get_video_parameter() == expected
+    expected = "06 00 01 01 000101C3 00208006 00000000 00 0000 0000 00 none none"
+    wvp = RasberryPiVideo()
+    assert wvp.get_wfd_video_formats() == expected
 
 
 @pytest.mark.unit
@@ -201,9 +207,9 @@ def _tvservice_mock(cmd):
 def test_tvservice_cea(monkeypatch):
     def mockreturn(self, cmd):
         return _tvservice_mock(cmd)
-    monkeypatch.setattr(WfdVideoParameters, "_call_tvservice", mockreturn)
-    v = WfdVideoParameters()
-    param = v.retrieve_tvservice(WfdVideoParameters.TvModes.CEA)
+    monkeypatch.setattr(RasberryPiVideo, "_call_tvservice", mockreturn)
+    v = RasberryPiVideo()
+    param = v._retrieve_tvservice(RasberryPiVideo.TvModes.CEA)
     assert param[0]["code"] == 1
     assert param[1]["width"] == 720
 
@@ -212,16 +218,19 @@ def test_tvservice_cea(monkeypatch):
 def test_tvservice_dmt(monkeypatch):
     def mockreturn(self, cmd):
         return _tvservice_mock(cmd)
-    monkeypatch.setattr(WfdVideoParameters, "_call_tvservice", mockreturn)
-    v = WfdVideoParameters()
-    param = v.retrieve_tvservice(WfdVideoParameters.TvModes.DMT)
+    monkeypatch.setattr(RasberryPiVideo, "_call_tvservice", mockreturn)
+    v = RasberryPiVideo()
+    param = v._retrieve_tvservice(RasberryPiVideo.TvModes.DMT)
     assert param[0]["code"] == 4
     assert param[1]["width"] == 800
 
 
 @pytest.mark.unit
-def test_load_resolutons_json():
-    v = WfdVideoParameters()
+def test_load_resolutons_json(monkeypatch):
+    def mockreturn(self):
+        return _get_display_resolutions_mock(self)
+    monkeypatch.setattr(RasberryPiVideo, "_get_display_resolutions", mockreturn)
+    v = RasberryPiVideo()
     assert v.resolutions['cea'] is not None
     assert v.resolutions['vesa'] is not None
     assert len(v.resolutions['cea']) == 12
@@ -232,10 +241,9 @@ def test_load_resolutons_json():
 def test_get_display_resolution(monkeypatch):
     def mockreturn(self, cmd):
         return _tvservice_mock(cmd)
-    monkeypatch.setattr(WfdVideoParameters, "_call_tvservice", mockreturn)
-    v = WfdVideoParameters()
-    cea, vesa, hh = v.get_display_resolutions()
-    assert cea == 0x0101C3
-    assert vesa == 0x0208006
-    assert hh == 0x00
+    monkeypatch.setattr(RasberryPiVideo, "_call_tvservice", mockreturn)
+    v = RasberryPiVideo()
+    assert v.cea == 0x0101C3
+    assert v.vesa == 0x0208006
+    assert v.hh == 0x00
 

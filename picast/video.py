@@ -24,19 +24,24 @@ import os
 import re
 import subprocess
 from logging import getLogger
-from typing import Tuple
 
 from picast.settings import Settings
 
 
-class WfdVideoParameters:
+class Video:
+    """Base class to populate video parameters."""
 
     def __init__(self):
         self.config = Settings()
-        with open(os.path.join(os.path.dirname(__file__), 'resolutions.json'), 'r') as j:
-            self.resolutions = json.load(j)[0]
+        self.native = 0x06
+        self.preferred = 0
+        self.profile = 0x02
+        self.level = 0x02
+        self.cea = 0x00ffffff
+        self.vesa = 0x00ffffff
+        self.hh = 0x00ff
 
-    def get_video_parameter(self) -> str:
+    def get_wfd_video_formats(self) -> str:
         # wfd_video_formats: <native_resolution: 0x20>, <preferred>, <profile>, <level>,
         #                    <cea>, <vesa>, <hh>, <latency>, <min_slice>, <slice_enc>, <frame skipping support>
         #                    <max_hres>, <max_vres>
@@ -45,13 +50,26 @@ class WfdVideoParameters:
         # profile: Constrained High Profile: 0x02, or Constraint Baseline Profile: 0x01, only one bit set
         # level: H264 level 3.1: 0x01, 3.2: 0x02, 4.0: 0x04,4.1:0x08, 4.2=0x10
         #   3.2: 720p60,  4.1: FullHD@24, 4.2: FullHD@60
-        native = 0x06
-        preferred = 0
-        profile = 0x02
-        level = 0x02
-        cea, vesa, hh = self.get_display_resolutions()
         return '{0:02X} {1:02X} {2:02X} {3:02X} {4:08X} {5:08X} {6:08X} 00 0000 0000 00 none none' \
-               .format(native, preferred, profile, level, cea, vesa, hh)
+               .format(self.native, self.preferred, self.profile, self.level, self.cea, self.vesa, self.hh)
+
+
+class GenericVideo(Video):
+    pass
+
+
+class RasberryPiVideo(Video):
+    """Utility class to retrive video parameters from Raspberry Pi specific command."""
+
+    def __init__(self):
+        super(RasberryPiVideo, self).__init__()
+        self.native = 0x06
+        self.preferred = 0
+        self.profile = 0x01
+        self.level = 0x01
+        with open(os.path.join(os.path.dirname(__file__), 'resolutions.json'), 'r') as j:
+            self.resolutions = json.load(j)[0]
+        self._get_display_resolutions()
 
     class TvModes(enum.Enum):
         CEA = "-m CEA -j"
@@ -64,7 +82,7 @@ class WfdVideoParameters:
         logger.debug("tvservice: {}".format(data))
         return data
 
-    def retrieve_tvservice(self, mode: TvModes) -> dict:
+    def _retrieve_tvservice(self, mode: TvModes) -> dict:
         if mode is self.TvModes.Current:
             data = self._call_tvservice("tvservice -s")
             r = re.compile(r'([0-9]+)x([0-9]+),\s+@\s+([1-9][0-9])\.[0-9][0-9]HZ')
@@ -78,22 +96,24 @@ class WfdVideoParameters:
             status = json.loads(data)
         return status
 
-    def get_display_resolutions(self) -> Tuple[int, int, int]:
+    def _get_display_resolutions(self):
         cea = 0x01
         vesa = 0x00
         hh =  0x00
-        cea_resolutions = self.retrieve_tvservice(mode=self.TvModes.CEA)
+        cea_resolutions = self._retrieve_tvservice(mode=self.TvModes.CEA)
         for r in cea_resolutions:
             res_list = self.resolutions['cea']
             for res in res_list:
                 if res['mode'] == r['code']:
                     cea |= 1 << res['id']
                     break
-        dmt_resolutions = self.retrieve_tvservice(mode=self.TvModes.DMT)
+        dmt_resolutions = self._retrieve_tvservice(mode=self.TvModes.DMT)
         for r in dmt_resolutions:
             res_list = self.resolutions['vesa']
             for res in res_list:
                 if res['mode'] == r['code']:
                     vesa |= 1 << res['id']
                     break
-        return cea, vesa, hh
+        self.cea = cea
+        self.vesa = vesa
+        self.hh = hh

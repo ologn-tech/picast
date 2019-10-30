@@ -27,8 +27,8 @@ from logging import getLogger
 from time import sleep
 
 from picast.discovery import ServiceDiscovery
-from picast.settings import Settings
-from picast.video import WfdVideoParameters
+from picast.settings import PlatformType, Settings
+from picast.video import GenericVideo, RasberryPiVideo, Video
 
 
 class RtspServer(threading.Thread):
@@ -41,6 +41,12 @@ class RtspServer(threading.Thread):
         self.watchdog = 0
         self.csnum = 0
         self.daemon = True
+        if self.config == PlatformType.RaspberryPi:
+            self.video = RasberryPiVideo()  # type: Video
+        else:
+            self.video = GenericVideo()
+        self.wfd_parameters = self.config.get_wfd_parameters()
+        self.wfd_video_formats = self.video.get_wfd_video_formats()
 
     @staticmethod
     def _rtsp_parse_headers(headers):
@@ -164,21 +170,17 @@ class RtspServer(threading.Thread):
         cmd, url, resp, seq, others = self._rtsp_parse_headers(headers)
         if cmd != 'GET_PARAMETER' or url != 'rtsp://localhost/wfd1.0':
             return False
-        # audio_codec: LPCM:0x01, AAC:0x02, AC3:0x04
-        # audio_sampling_frequency: 44.1khz:1, 48khz:2
-        # LPCM: 44.1kHz, 16b; 48 kHZ,16b
-        # AAC: 48 kHz, 16b, 2 channels; 48kHz,16b, 4 channels, 48 kHz,16b,6 channels
-        # AAC 00000001 00  : 2 ch AAC 48kHz
-        msg = 'wfd_audio_codecs: AAC 00000001 00, LPCM 00000002 00\r\n'
-        msg += "wfd_client_rtp_ports: RTP/AVP/UDP;unicast {} 0 mode=play\r\n".format(self.config.rtp_port)
-        msg += 'wfd_video_formats: {}\r\n'.format(WfdVideoParameters().get_video_parameter())
-        msg += 'wfd_3d_video_formats: none\r\n'
-        msg += 'wfd_coupled_sink: none\r\n'
-        msg += 'wfd_display_edid: none\r\n'
-        msg += 'wfd_connector_type: 05\r\n'
-        msg += 'wfd_uibc_capability: none\r\n'
-        msg += 'wfd_standby_resume_capability: none\r\n'
-        msg += 'wfd_content_protection: none\r\n'
+        msg = ''
+        for req in body.split('\r\n'):
+            if req == 'wfd_client_rtp_ports':
+                msg += "wfd_client_rtp_ports: RTP/AVP/UDP;unicast {} 0 mode=play\r\n".format(self.config.rtp_port)
+            elif req == 'wfd_video_formats':
+                msg += 'wfd_video_formats: {}\r\n'.format(self.wfd_video_formats)
+            elif req in self.wfd_parameters:
+                msg += '{}: {}\r\n'.format(req, self.wfd_parameters[req])
+            else:
+                msg += '{}: none\r\n'.format(req)
+
         m3resp = self._rtsp_response_header(seq=seq, res="200 OK",
                                            others=[('Content-Type', 'text/parameters'),
                                                    ('Content-Length', len(msg))

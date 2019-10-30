@@ -6,7 +6,7 @@ from time import sleep
 import pytest
 
 from picast.rtspserver import RtspServer
-from picast.video import WfdVideoParameters
+from picast.video import RasberryPiVideo
 
 
 class MockPlayer():
@@ -147,16 +147,14 @@ def test_rtsp_negotiation(monkeypatch, rtsp_mock_server):
         return True
 
     def videomock(self):
-        return "wfd_video_formats: 00 00 01 01 00000001 00000000 00000000 00 0000 0000 00 none none\r\n" \
-               "wfd_audio_codecs: LPCM 00000002 00\r\nwfd_3d_video_formats: none\r\n" \
-               "wfd_content_protection: none\r\nwfd_display_edid: none\r\nwfd_coupled_sink: none\r\n\r\n"
+        return "00 00 01 01 00000001 00000000 00000000 00 0000 0000 00 none none"
 
     def rtspsrvmock(self, sock, idrsock):
         return
 
     monkeypatch.setattr(RtspServer, "_connect", mockretrun)
     monkeypatch.setattr(RtspServer, "rtspsrv", rtspsrvmock)
-    monkeypatch.setattr(WfdVideoParameters, "get_video_parameter", videomock)
+    monkeypatch.setattr(RasberryPiVideo, "get_wfd_video_formats", videomock)
 
     rtsp_mock_server.start()
     sleep(0.5)

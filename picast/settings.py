@@ -19,8 +19,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import configparser
+import enum
 import os
 import threading
+
+
+class PlatformType(enum.Enum):
+    RaspberryPi = 1
+    BeagleBoardBlack = 2
+    PandaBoard = 3
+    Generic = 999
 
 
 class Settings():
@@ -46,6 +54,7 @@ class Settings():
                         inidir = os.path.dirname(config)
                         inifile = config
                     self._config = self.configParse(inifile)
+                    self._platform = self._detect_platform()
 
     def configParse(self, file_path) :
         if not os.path.exists(file_path) :
@@ -53,6 +62,12 @@ class Settings():
         config = configparser.ConfigParser()
         config.read(file_path)
         return config
+
+    def _detect_platform(self):
+        self.platform = PlatformType.RaspberryPi  # FIXME
+
+    def get_wfd_parameters(self):
+        return self._config['wfd_parameter']
 
     @property
     def logging_config(self):
@@ -105,3 +120,7 @@ class Settings():
     @property
     def rtsp_port(self):
         return self._config.getint('network', 'rtsp_port')
+
+    @property
+    def gst_decoder(self):
+        return self._config.get('gst', 'decoder')
