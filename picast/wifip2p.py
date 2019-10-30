@@ -61,10 +61,10 @@ class WifiP2PServer(threading.Thread):
         max_tp = 300  # Mbps
         return '0006{0:04x}{1:04x}{2:04x}'.format(devinfo, control, max_tp)
 
-    def wfd_bssid(self, bssid:int) -> str:
+    def wfd_bssid(self, bssid: int) -> str:
         return '0006{0:012X}'.format(bssid)
 
-    def wfd_sink_info(self, status:int, mac:int) -> str:
+    def wfd_sink_info(self, status: int, mac: int) -> str:
         return '0007{0:02X}{1:012X}'.format(status, mac)
 
     def wfd_ext_cap(self, uibc=False, i2c=False) -> str:

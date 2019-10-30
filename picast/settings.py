@@ -56,8 +56,8 @@ class Settings():
                     self._config = self.configParse(inifile)
                     self._platform = self._detect_platform()
 
-    def configParse(self, file_path) :
-        if not os.path.exists(file_path) :
+    def configParse(self, file_path):
+        if not os.path.exists(file_path):
             raise IOError(file_path)
         config = configparser.ConfigParser()
         config.read(file_path)

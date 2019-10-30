@@ -29,7 +29,7 @@ from time import sleep
 
 from picast.discovery import ServiceDiscovery
 from picast.settings import PlatformType, Settings
-from picast.video import GenericVideo, RasberryPiVideo, Video
+from picast.video import GenericVideo, RasberryPiVideo, Video  # noqa: F401
 
 
 class RtspServer(threading.Thread):
@@ -56,7 +56,7 @@ class RtspServer(threading.Thread):
         if firstline.startswith('RTSP/1.0'):
             m = regex.match(firstline)
             if m:
-                status, reason = m.group(1,2)
+                status, reason = m.group(1, 2)
                 cmd = None
                 url = None
                 resp = "{} {}".format(status, reason)
@@ -72,7 +72,7 @@ class RtspServer(threading.Thread):
         for h in headers[1:]:
             pos = h.find(':')
             key = h[:pos]
-            val = h[pos+2:]
+            val = h[pos + 2:]
             if key == 'CSeq':
                 seq = int(val)
             else:
@@ -100,7 +100,7 @@ class RtspServer(threading.Thread):
         pos = data.find('\r\n\r\n')
         if pos > 0:
             headers = data[:pos].split('\r\n')
-            body = data[pos+4:]
+            body = data[pos + 4:]
         else:
             raise ValueError
         return headers, body
@@ -151,7 +151,8 @@ class RtspServer(threading.Thread):
         cmd, url, resp, seq, others = self._rtsp_parse_headers(headers)
         if cmd != 'OPTIONS':
             return False
-        s_data = self._rtsp_response_header(seq=seq, res="200 OK", others=[("Public", "org.wfa.wfd1.0, SET_PARAMETER, GET_PARAMETER")])
+        s_data = self._rtsp_response_header(seq=seq, res="200 OK",
+                                            others=[("Public", "org.wfa.wfd1.0, SET_PARAMETER, GET_PARAMETER")])
         self.logger.debug("<-{}".format(s_data))
         sock.sendall(s_data.encode("UTF-8"))
         return True
@@ -165,7 +166,7 @@ class RtspServer(threading.Thread):
         self.logger.debug("->{}".format(data))
         headers, body = self._split_header_body(data)
         cmd, url, resp, seq, others = self._rtsp_parse_headers(headers)
-        if seq != 100 or resp  != "200 OK":
+        if seq != 100 or resp != "200 OK":
             return False
         return True
 
@@ -190,9 +191,9 @@ class RtspServer(threading.Thread):
                 msg += '{}: none\r\n'.format(req)
 
         m3resp = self._rtsp_response_header(seq=seq, res="200 OK",
-                                           others=[('Content-Type', 'text/parameters'),
-                                                   ('Content-Length', len(msg))
-                                                   ])
+                                            others=[('Content-Type', 'text/parameters'),
+                                                    ('Content-Length', len(msg))
+                                                    ])
         m3resp += msg
         self.logger.debug("<-{}".format(m3resp))
         sock.sendall(m3resp.encode("UTF-8"))
@@ -227,12 +228,12 @@ class RtspServer(threading.Thread):
     def cast_seq_m6(self, sock):
         self.csnum += 1
         m6req = self._rtsp_response_header(cmd="SETUP",
-                                          url="rtsp://{0:s}/wfd1.0/streamid=0".format(self.config.peeraddress),
-                                          seq=self.csnum,
-                                          others=[
-                                              ('Transport',
-                                               'RTP/AVP/UDP;unicast;client_port={0:d}'.format(self.config.rtp_port))
-                                          ])
+                                           url="rtsp://{0:s}/wfd1.0/streamid=0".format(self.config.peeraddress),
+                                           seq=self.csnum,
+                                           others=[
+                                               ('Transport',
+                                                'RTP/AVP/UDP;unicast;client_port={0:d}'.format(self.config.rtp_port))
+                                           ])
         self.logger.debug("<-{}".format(m6req))
         sock.sendall(m6req.encode("UTF-8"))
 
@@ -252,9 +253,9 @@ class RtspServer(threading.Thread):
     def cast_seq_m7(self, sock, sessionid):
         self.csnum += 1
         m7req = self._rtsp_response_header(cmd='PLAY',
-                                          url='rtsp://{0:s}/wfd1.0/streamid=0'.format(self.config.peeraddress),
-                                          seq=self.csnum,
-                                          others=[('Session', sessionid)])
+                                           url='rtsp://{0:s}/wfd1.0/streamid=0'.format(self.config.peeraddress),
+                                           seq=self.csnum,
+                                           others=[('Session', sessionid)])
         self.logger.debug("<-{}".format(m7req))
         sock.sendall(m7req.encode("UTF-8"))
 
@@ -352,11 +353,11 @@ class RtspServer(threading.Thread):
                 self.csnum += 1
                 msg = 'wfd-idr-request\r\n'
                 idrreq = self._rtsp_response_header(seq=self.csnum,
-                                                   cmd="SET_PARAMETER", url="rtsp://localhost/wfd1.0",
-                                                   others=[
-                                                       ('Content-Length', len(msg)),
-                                                       ('Content-Type', 'text/parameters')
-                                                   ])
+                                                    cmd="SET_PARAMETER", url="rtsp://localhost/wfd1.0",
+                                                    others=[
+                                                        ('Content-Length', len(msg)),
+                                                        ('Content-Type', 'text/parameters')
+                                                    ])
                 idrreq += msg
                 self.logger.debug("idreq: {}".format(idrreq))
                 sock.sendall(idrreq.encode("UTF-8"))

@@ -99,7 +99,7 @@ class RasberryPiVideo(Video):
     def _get_display_resolutions(self):
         cea = 0x01
         vesa = 0x00
-        hh =  0x00
+        hh = 0x00
         cea_resolutions = self._retrieve_tvservice(mode=self.TvModes.CEA)
         for r in cea_resolutions:
             res_list = self.resolutions['cea']

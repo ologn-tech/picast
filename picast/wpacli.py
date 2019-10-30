@@ -52,7 +52,7 @@ class WpaCli:
         if 'OK' not in status:
             raise WpaException("Fail to stop p2p find.")
 
-    def set_device_name(self, name:str):
+    def set_device_name(self, name: str):
         self.logger.debug("wpa_cli set device_name {}".format(name))
         status = self.cmd("set", "device_name", name)
         if 'OK' not in status:
@@ -70,17 +70,17 @@ class WpaCli:
         if 'OK' not in status:
             raise WpaException("Fail to set p2p_go_ht40")
 
-    def wfd_subelem_set(self, key:int, val:str):
+    def wfd_subelem_set(self, key: int, val: str):
         self.logger.debug("wpa_cli wfd_subelem_set {0:d} {1:s}".format(key, val))
         status = self.cmd("wfd_subelem_set", "{0:d}".format(key), val)
         if 'OK' not in status:
             raise WpaException("Fail to wfd_subelem_set.")
 
-    def p2p_group_add(self, name:str):
+    def p2p_group_add(self, name: str):
         self.logger.debug("wpa_cli p2p_group_add {}".format(name))
-        self.cmd("p2p_group_add",name)
+        self.cmd("p2p_group_add", name)
 
-    def set_wps_pin(self, interface:str, pin:str, timeout:int):
+    def set_wps_pin(self, interface: str, pin: str, timeout: int):
         self.logger.debug("wpa_cli -i {0:s} wps_pin any {1:s} {2:d}".format(interface, pin, timeout))
         status = self.cmd("-i", interface, "wps_pin", "any", "{0:s}".format(pin), "{0:d}".format(timeout))
         return status
