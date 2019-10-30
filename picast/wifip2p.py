@@ -31,11 +31,11 @@ from picast.wpacli import WpaCli
 
 class WifiP2PServer(threading.Thread):
 
-    def __init__(self, logger='picast'):
+    def __init__(self, R2=False, logger='picast'):
         super(WifiP2PServer, self).__init__(name='wifi-p2p-0', daemon=False)
         self.config = Settings()
         self.logger = getLogger(logger)
-        self.set_p2p_interface()
+        self.set_p2p_interface(R2)
 
     def run(self):
         self.start_dhcpd()
@@ -77,7 +77,7 @@ class WifiP2PServer(threading.Thread):
         r2_sink = 0b01
         return '0002{0:04X}'.format(r2_sink)
 
-    def create_p2p_interface(self):
+    def create_p2p_interface(self, R2):
         wpacli = WpaCli()
         wpacli.start_p2p_find()
         wpacli.set_device_name(self.config.device_name)
@@ -87,16 +87,17 @@ class WifiP2PServer(threading.Thread):
         wpacli.wfd_subelem_set(1, self.wfd_bssid(0))
         wpacli.wfd_subelem_set(6, self.wfd_sink_info(0, 0))
         wpacli.wfd_subelem_set(7, self.wfd_ext_cap(uibc=False, i2c=False))
-        wpacli.wfd_subelem_set(11, self.wfd_devinfo2())
+        if R2:
+            wpacli.wfd_subelem_set(11, self.wfd_devinfo2())
         wpacli.p2p_group_add(self.config.group_name)
 
-    def set_p2p_interface(self):
+    def set_p2p_interface(self, R2):
         wpacli = WpaCli()
         if wpacli.check_p2p_interface():
             self.logger.info("Already set a p2p interface.")
             p2p_interface = wpacli.get_p2p_interface()
         else:
-            self.create_p2p_interface()
+            self.create_p2p_interface(R2)
             sleep(3)
             p2p_interface = wpacli.get_p2p_interface()
             if p2p_interface is None:
