@@ -31,7 +31,7 @@ gi.require_version('GstVideo', '1.0')  # noqa: E402 # isort:skip
 gi.require_version('GdkX11', '3.0')  # noqa: E402 # isort:skip
 from gi.repository import GObject, Gst, Gtk  # noqa: E402 # isort:skip
 
-from picast.settings import Settings
+from picast.settings import Settings  # noqa: E402 # isort:skip
 
 
 class VlcPlayer():

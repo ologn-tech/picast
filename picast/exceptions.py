@@ -3,4 +3,3 @@ class PiCastException(Exception):
 
 class WpaException(Exception):
     pass
-

@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import re
 import subprocess
 from logging import getLogger
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
 
 from picast.exceptions import WpaException
 
