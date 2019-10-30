@@ -178,7 +178,9 @@ class RtspServer(threading.Thread):
             return False
         msg = ''
         for req in body.split('\r\n'):
-            if req == 'wfd_client_rtp_ports':
+            if req == '':
+                continue
+            elif req == 'wfd_client_rtp_ports':
                 msg += "wfd_client_rtp_ports: RTP/AVP/UDP;unicast {} 0 mode=play\r\n".format(self.config.rtp_port)
             elif req == 'wfd_video_formats':
                 msg += 'wfd_video_formats: {}\r\n'.format(self.wfd_video_formats)
