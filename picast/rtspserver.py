@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import errno
 import fcntl
 import os
+import re
 import socket
 import threading
 from logging import getLogger
@@ -51,11 +52,16 @@ class RtspServer(threading.Thread):
     @staticmethod
     def _rtsp_parse_headers(headers):
         firstline = headers[0]
+        regex = re.compile(r"RTSP/1.0 ([0-9]+) (\w+([ ]\w)*)")
         if firstline.startswith('RTSP/1.0'):
-            version, status, reason = firstline.split(' ')
-            cmd = None
-            url = None
-            resp = "{} {}".format(status, reason)
+            m = regex.match(firstline)
+            if m:
+                status, reason = m.group(1,2)
+                cmd = None
+                url = None
+                resp = "{} {}".format(status, reason)
+            else:
+                raise ValueError
         else:
             cmd, url, version = firstline.split(' ')
             if version != 'RTSP/1.0':
