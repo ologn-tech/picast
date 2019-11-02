@@ -54,10 +54,10 @@ def main():
         player = VlcPlayer()
 
     rtspserver = RtspSink(player)
-    ## for python3.7 or later
+    # for python3.7 or later
     # asyncio.run(rtspserver.run())
-
-    ## for python3.6
+    #
+    # for python3.6
     loop = asyncio.get_event_loop()
     loop.run_until_complete(rtspserver.run())
     loop.close()
