@@ -23,7 +23,7 @@ class MockServer(threading.Thread):
 
 
 @pytest.mark.asyncio
-async def test_open_connection(monkeypatch, unused_tcp_port):
+async def test_open_connection(monkeypatch, unused_port):
 
     def videomock(self):
         return "06 00 01 10 000101C3 00208006 00000000 00 0000 0000 00 none none"
@@ -34,9 +34,9 @@ async def test_open_connection(monkeypatch, unused_tcp_port):
     monkeypatch.setattr(RasberryPiVideo, "get_wfd_video_formats", videomock)
     monkeypatch.setattr(RasberryPiVideo, "_get_display_resolutions", nonemock)
 
-    server = MockServer(unused_tcp_port)
+    server = MockServer(unused_port)
     server.start()
     player = None
     rtspserver = RtspSink(player)
-    assert await rtspserver.open_connection('127.0.0.1', unused_tcp_port)
+    assert await rtspserver.open_connection('127.0.0.1', unused_port)
     server.join()

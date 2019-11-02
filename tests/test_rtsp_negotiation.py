@@ -108,7 +108,7 @@ class RtspSource(threading.Thread):
 
 @pytest.mark.connection
 @pytest.mark.asyncio
-async def test_rtsp_negotiation(monkeypatch, unused_tcp_port):
+async def test_rtsp_negotiation(monkeypatch, unused_port):
 
     def videomock(self):
         return "06 00 01 10 000101C3 00208006 00000000 00 0000 0000 00 none none"
@@ -119,11 +119,11 @@ async def test_rtsp_negotiation(monkeypatch, unused_tcp_port):
     monkeypatch.setattr(RasberryPiVideo, "get_wfd_video_formats", videomock)
     monkeypatch.setattr(RasberryPiVideo, "_get_display_resolutions", nonemock)
 
-    rtsp_source = RtspSource(unused_tcp_port)
+    rtsp_source = RtspSource(unused_port)
     rtsp_source.start()
     sleep(0.5)
     player = MockPlayer()
     rtsp_sink = RtspSink(player)
-    await rtsp_sink.open_connection('127.0.0.1', unused_tcp_port)
+    await rtsp_sink.open_connection('127.0.0.1', unused_port)
     assert await rtsp_sink.negotiate()
     rtsp_source.join()
