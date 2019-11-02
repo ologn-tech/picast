@@ -6,6 +6,7 @@ coveralls
 flake8
 pyannotate
 pytest
+pytest-asyncio
 pytest-cov
 tox
 twine
