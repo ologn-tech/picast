@@ -54,6 +54,8 @@ class MockRtspClient(threading.Thread):
         m2_resp = "RTSP/1.0 200 OK\r\nCSeq: 100\r\nPublic: org.wfa.wfd1.0, SETUP, TEARDOWN, PLAY, PAUSE, GET_PARAMETER, SET_PARAMETER\r\n\r\n"
         conn.sendall(m2_resp.encode("UTF-8"))
 
+        sleep(0.1)
+
         # M3
         m3 = "GET_PARAMETER rtsp://localhost/wfd1.0 RTSP/1.0\r\nCSeq: 1\r\nContent-Type: text/parameters\r\n" \
              "Content-Length: 141\r\n\r\n" \
