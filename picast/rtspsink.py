@@ -24,6 +24,7 @@ import re
 import socket
 from logging import getLogger
 from time import sleep
+from typing import List
 
 from picast.discovery import ServiceDiscovery
 from picast.settings import Settings
@@ -76,7 +77,7 @@ class RtspSink:
             results[key] = val
         return results
 
-    async def read_headers(self):
+    async def read_headers(self) -> List[str]:
         inputs = await self._reader.readline()
         line = inputs.decode('UTF-8')
         headers = []
@@ -84,14 +85,15 @@ class RtspSink:
             headers.append(line.rsplit('\r\n')[0])
             inputs = await self._reader.readline()
             line = inputs.decode('UTF-8')
+        self.logger.debug("<< {}".format(headers))
         print(headers)
         return headers
 
-    async def read_body(self, headers):
+    async def read_body(self, headers) -> bytes:
         length = headers.get('Content-Length', None)
         if length is None:
-            return ''
-        return await self._reader.read(length)
+            return b''
+        return await self._reader.read(int(length))
 
     @staticmethod
     def _rtsp_response_header(cmd=None, url=None, res=None, seq=None, others=None):
@@ -100,14 +102,14 @@ class RtspSink:
         else:
             msg = "RTSP/1.0"
         if res is not None:
-            msg += ' {0:s}\r\nCSeq: {1:d}\r\n'.format(res, seq)
+            msg += ' {0}\r\nCSeq: {1}\r\n'.format(res, seq)
         else:
-            msg += '\r\nCSeq: {0:d}\r\n'.format(seq)
+            msg += '\r\nCSeq: {}\r\n'.format(seq)
         if others is not None:
             for k, v in others:
                 msg += '{}: {}\r\n'.format(k, v)
         msg += '\r\n'
-        return msg.encode('UTF-8')
+        return msg
 
     @staticmethod
     def _parse_transport_header(data):
@@ -143,7 +145,7 @@ class RtspSink:
         s_data = self._rtsp_response_header(seq=headers['CSeq'], res="200 OK",
                                             others=[("Public", "org.wfa.wfd1.0, SET_PARAMETER, GET_PARAMETER")])
         self.logger.debug("<-{}".format(s_data))
-        self._writer.write(s_data)
+        self._writer.write(s_data.encode('ASCII'))
         await self._writer.drain()
 
         return True
@@ -153,11 +155,11 @@ class RtspSink:
         s_data = self._rtsp_response_header(seq=self.csnum, cmd="OPTIONS",
                                             url="*", others=[('Require', 'org.wfa.wfd1.0')])
         self.logger.debug("<-{}".format(s_data))
-        self._writer.write(s_data)
+        self._writer.write(s_data.encode('ASCII'))
         await self._writer.drain()
 
         headers = await self.get_rtsp_headers()
-        if headers['CSeq'] != 100 or headers['resp'] != "200 OK":
+        if headers['CSeq'] != '100' or headers['resp'] != "200 OK":
             return False
         return True
 
@@ -167,7 +169,7 @@ class RtspSink:
             return False
         body = await self.read_body(headers)
         msg = ''
-        for req in body.split('\r\n'):
+        for req in body.decode('UTF-8').split('\r\n'):
             if req == '':
                 continue
             elif req == 'wfd_client_rtp_ports':
@@ -183,9 +185,9 @@ class RtspSink:
                                             others=[('Content-Type', 'text/parameters'),
                                                     ('Content-Length', len(msg))
                                                     ])
-        m3resp += msg
         self.logger.debug("<-{}".format(m3resp))
-        self._writer.writelines(m3resp)
+        self._writer.write(m3resp.encode('ASCII'))
+        self._writer.write(msg.encode('ASCII'))
         await self._writer.drain()
         return True
 
@@ -197,7 +199,7 @@ class RtspSink:
         # FIXME: parse body here to retrieve video mode and set actual mode.
         s_data = self._rtsp_response_header(res="200 OK", seq=headers['CSeq'])
         self.logger.debug("<-{}".format(s_data))
-        self._writer.writelines(s_data)
+        self._writer.write(s_data.encode('ASCII'))
         await self._writer.drain()
         return True
 
@@ -208,13 +210,13 @@ class RtspSink:
             self.logger.debug("M5: got other than SET_PARAMETER request.")
             s_data = self._rtsp_response_header(res="400 Bad Requests", seq=headers['CSeq'])
             self.logger.debug("<-{}".format(s_data))
-            self._writer.writelines(s_data)
+            self._writer.write(s_data.encode('ASCII'))
             await self._writer.drain()
             return False
         # FIXME: analyze body to have  'wfd_trigger_method: SETUP'
         s_data = self._rtsp_response_header(res="200 OK", seq=headers['CSeq'])
         self.logger.debug("<-{}".format(s_data))
-        self._writer.write(s_data)
+        self._writer.write(s_data.encode('ASCII'))
         await self._writer.drain()
         return True
 
@@ -230,7 +232,7 @@ class RtspSink:
                                                 'RTP/AVP/UDP;unicast;client_port={0:d}'.format(self.config.rtp_port))
                                            ])
         self.logger.debug("<-{}".format(m6req))
-        self._writer.write(m6req)
+        self._writer.write(m6req.encode('ASCII'))
         await self._writer.drain()
 
         headers = await self.get_rtsp_headers()
@@ -319,7 +321,7 @@ class RtspSink:
                     self.logger.debug("Got TEARDOWN request.")
                     m5_msg = self._rtsp_response_header(seq=self.csnum, cmd="TEARDOWN",
                                                         url="rtsp://localhost/wfd1.0")
-                    self._writer.writelines(m5_msg)
+                    self._writer.write(m5_msg)
                     await self._writer.drain()
                     self.teardown = True
                     self.player.stop()
