@@ -236,7 +236,7 @@ class RtspSink:
 
         headers = await self.get_rtsp_headers()
         if headers['CSeq'] != self.csnum:
-            return False
+            return None, None
         if 'Transport' in headers:
             udp, client_port, server_port = self._parse_transport_header(headers['Transport'])
             self.logger.debug("server port {}".format(server_port))
@@ -260,16 +260,27 @@ class RtspSink:
 
     async def negotiate(self) -> bool:
         self.logger.debug("---- Start negotiation ----")
-        if await self.cast_seq_m1() and await self.cast_seq_m2() and await self.cast_seq_m3() and \
-           await self.cast_seq_m4() and await self.cast_seq_m5():
+        while True:
+            if not await self.cast_seq_m1():
+                break
+            if not await self.cast_seq_m2():
+                break
+            if not await self.cast_seq_m3():
+                break
+            if not await self.cast_seq_m4():
+                break
+            if not await self.cast_seq_m5():
+                break
             await asyncio.sleep(0.1)
             sessionid, server_port = await self.cast_seq_m6()
-            await self.cast_seq_m7(sessionid)
+            if sessionid is None:
+                break
+            if not await self.cast_seq_m7(sessionid):
+                break
             self.logger.info("---- Negotiation successful ----")
             return True
-        else:
-            self.logger.info("---- Negotiation failed ----")
-            return False
+        self.logger.info("---- Negotiation failed ----")
+        return False
 
     async def open_connection(self, host, port):
         while self._max_attempt == 0 or self._attempt < self._max_attempt:
