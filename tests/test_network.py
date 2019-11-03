@@ -141,7 +141,7 @@ async def test_rtsp_m1(monkeypatch, unused_port):
     player = None
     rtspserver = RtspSink(player)
     await rtspserver.open_connection('127.0.0.1', unused_port)
-    await rtspserver.cast_seq_m1()
+    await rtspserver.rtsp_m1()
     result, msg = server.join()
     if not result:
         pytest.fail(msg)
@@ -161,7 +161,7 @@ async def test_rtsp_m2(monkeypatch, unused_port):
     player = None
     rtspserver = RtspSink(player)
     await rtspserver.open_connection('127.0.0.1', unused_port)
-    await rtspserver.cast_seq_m2()
+    await rtspserver.rtsp_m2()
     result, msg = server.join()
     if not result:
         pytest.fail(msg)
@@ -181,7 +181,7 @@ async def test_rtsp_m3(monkeypatch, unused_port):
     player = None
     rtspserver = RtspSink(player)
     await rtspserver.open_connection('127.0.0.1', unused_port)
-    await rtspserver.cast_seq_m3()
+    await rtspserver.rtsp_m3()
     result, msg = server.join()
     if not result:
         pytest.fail(msg)
@@ -201,7 +201,7 @@ async def test_rtsp_m4(monkeypatch, unused_port):
     player = None
     rtspserver = RtspSink(player)
     await rtspserver.open_connection('127.0.0.1', unused_port)
-    await rtspserver.cast_seq_m4()
+    await rtspserver.rtsp_m4()
     result, msg = server.join()
     if not result:
         pytest.fail(msg)
@@ -221,7 +221,7 @@ async def test_rtsp_m5(monkeypatch, unused_port):
     player = None
     rtspserver = RtspSink(player)
     await rtspserver.open_connection('127.0.0.1', unused_port)
-    await rtspserver.cast_seq_m5()
+    await rtspserver.rtsp_m5()
     result, msg = server.join()
     if not result:
         pytest.fail(msg)
@@ -242,7 +242,7 @@ async def test_rtsp_m6(monkeypatch, unused_port):
     rtspserver = RtspSink(player)
     await rtspserver.open_connection('127.0.0.1', unused_port)
     rtspserver.csnum = 100
-    await rtspserver.cast_seq_m6()
+    await rtspserver.rtsp_m6()
     result, msg = server.join()
     if not result:
         pytest.fail(msg)
@@ -264,7 +264,7 @@ async def test_rtsp_m7(monkeypatch, unused_port):
     await rtspserver.open_connection('127.0.0.1', unused_port)
     rtspserver.csnum = 101
     sessionid = '7C9C5678'
-    await rtspserver.cast_seq_m7(sessionid)
+    await rtspserver.rtsp_m7(sessionid)
     result, msg = server.join()
     if not result:
         pytest.fail(msg)

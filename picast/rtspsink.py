@@ -137,7 +137,7 @@ class RtspSink:
                 continue
         return udp, client_port, server_port
 
-    async def cast_seq_m1(self):
+    async def rtsp_m1(self):
         headers = await self.get_rtsp_headers()
         if headers['cmd'] != 'OPTIONS':
             return False
@@ -149,7 +149,7 @@ class RtspSink:
 
         return True
 
-    async def cast_seq_m2(self):
+    async def rtsp_m2(self):
         self.csnum = 100
         s_data = self._rtsp_response_header(seq=self.csnum, cmd="OPTIONS",
                                             url="*", others=[('Require', 'org.wfa.wfd1.0')])
@@ -162,7 +162,7 @@ class RtspSink:
             return False
         return True
 
-    async def cast_seq_m3(self):
+    async def rtsp_m3(self):
         headers = await self.get_rtsp_headers()
         if headers['cmd'] != 'GET_PARAMETER' or headers['url'] != 'rtsp://localhost/wfd1.0':
             return False
@@ -190,7 +190,7 @@ class RtspSink:
         await self._writer.drain()
         return True
 
-    async def cast_seq_m4(self):
+    async def rtsp_m4(self):
         headers = await self.get_rtsp_headers()
         if headers['cmd'] != "SET_PARAMETER" or headers['url'] != "rtsp://localhost/wfd1.0":
             return False
@@ -202,7 +202,7 @@ class RtspSink:
         await self._writer.drain()
         return True
 
-    async def cast_seq_m5(self):
+    async def rtsp_m5(self):
         headers = await self.get_rtsp_headers()
         await self.read_body(headers)
         if headers['cmd'] != 'SET_PARAMETER':
@@ -219,7 +219,7 @@ class RtspSink:
         await self._writer.drain()
         return True
 
-    async def cast_seq_m6(self):
+    async def rtsp_m6(self):
         self.csnum += 1
         sessionid = None
         server_port = None
@@ -244,7 +244,7 @@ class RtspSink:
             sessionid = headers['Session'].split(';')[0]
         return sessionid, server_port
 
-    async def cast_seq_m7(self, sessionid):
+    async def rtsp_m7(self, sessionid):
         self.csnum += 1
         m7req = self._rtsp_response_header(cmd='PLAY',
                                            url='rtsp://{0:s}/wfd1.0/streamid=0'.format(self.config.peeraddress),
@@ -261,21 +261,21 @@ class RtspSink:
     async def negotiate(self) -> bool:
         self.logger.debug("---- Start negotiation ----")
         while True:
-            if not await self.cast_seq_m1():
+            if not await self.rtsp_m1():
                 break
-            if not await self.cast_seq_m2():
+            if not await self.rtsp_m2():
                 break
-            if not await self.cast_seq_m3():
+            if not await self.rtsp_m3():
                 break
-            if not await self.cast_seq_m4():
+            if not await self.rtsp_m4():
                 break
-            if not await self.cast_seq_m5():
+            if not await self.rtsp_m5():
                 break
             await asyncio.sleep(0.1)
-            sessionid, server_port = await self.cast_seq_m6()
+            sessionid, server_port = await self.rtsp_m6()
             if sessionid is None:
                 break
-            if not await self.cast_seq_m7(sessionid):
+            if not await self.rtsp_m7(sessionid):
                 break
             self.logger.info("---- Negotiation successful ----")
             return True
