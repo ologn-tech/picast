@@ -185,9 +185,9 @@ class RtspSink:
                                             others=[('Content-Type', 'text/parameters'),
                                                     ('Content-Length', len(msg))
                                                     ])
+        m3resp += msg
         self.logger.debug("<-{}".format(m3resp))
         self._writer.write(m3resp.encode('ASCII'))
-        self._writer.write(msg.encode('ASCII'))
         await self._writer.drain()
         return True
 
