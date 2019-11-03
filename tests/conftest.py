@@ -26,7 +26,7 @@ def pytest_sessionfinish(session, exitstatus):
     collect_types.dump_stats("type_info.json")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def unused_port():
     s = socket.socket(socket.AF_INET, type=socket.SOCK_STREAM)
     s.bind(('localhost', 0))

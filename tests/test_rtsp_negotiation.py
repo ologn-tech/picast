@@ -89,7 +89,7 @@ class RtspSource(threading.Thread):
 
         # M5
         m5 = b"SET_PARAMETER rtsp://localhost/wfd1.0 RTSP/1.0\r\n" \
-             b"CSeq: 3\r\nContent-Type: text/paramters\r\nContent-Length: 27\r\nwfd_trigger_method: SETUP\r\n\r\n"
+             b"CSeq: 3\r\nContent-Type: text/paramters\r\nContent-Length: 27\r\n\r\nwfd_trigger_method: SETUP\r\n\r\n"
         conn.sendall(m5)
         m5_resp = conn.recv(1000).decode('UTF-8')
         if m5_resp != "RTSP/1.0 200 OK\r\nCSeq: 3\r\n\r\n":
@@ -120,7 +120,6 @@ class RtspSource(threading.Thread):
             return
         m7_resp = b"RTSP/1.0 200 OK\r\nCSeq: 102\r\n\r\n"
         conn.sendall(m7_resp)
-
 
     def join(self, *args):
         threading.Thread.join(self, *args)

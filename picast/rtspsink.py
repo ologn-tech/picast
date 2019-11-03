@@ -86,7 +86,6 @@ class RtspSink:
             inputs = await self._reader.readline()
             line = inputs.decode('UTF-8')
         self.logger.debug("<< {}".format(headers))
-        print(headers)
         return headers
 
     async def read_body(self, headers) -> bytes:
@@ -252,7 +251,7 @@ class RtspSink:
                                            seq=self.csnum,
                                            others=[('Session', sessionid)])
         self.logger.debug("<-{}".format(m7req))
-        self._writer.write(m7req)
+        self._writer.write(m7req.encode('ASCII'))
         await self._writer.drain()
         headers = await self.get_rtsp_headers()
         if headers['resp'] != "200 OK" or headers['CSeq'] != self.csnum:
@@ -263,6 +262,7 @@ class RtspSink:
         self.logger.debug("---- Start negotiation ----")
         if await self.cast_seq_m1() and await self.cast_seq_m2() and await self.cast_seq_m3() and \
            await self.cast_seq_m4() and await self.cast_seq_m5():
+            await asyncio.sleep(0.1)
             sessionid, server_port = await self.cast_seq_m6()
             await self.cast_seq_m7(sessionid)
             self.logger.info("---- Negotiation successful ----")
