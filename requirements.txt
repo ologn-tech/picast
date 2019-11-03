@@ -1,5 +1,4 @@
 # PyGObject # should install from debian/ubuntu package.
-# PyGObject-stubs
 zeroconf
 coverage
 coveralls

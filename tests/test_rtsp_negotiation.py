@@ -129,6 +129,7 @@ class RtspSource(threading.Thread):
 
 @pytest.mark.connection
 @pytest.mark.asyncio
+@pytest.mark.skip
 async def test_rtsp_negotiation(monkeypatch, unused_port):
 
     def videomock(self):
