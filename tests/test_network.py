@@ -244,10 +244,12 @@ async def test_rtsp_m6(monkeypatch, unused_port):
     rtspserver = RtspSink(player)
     await rtspserver.open_connection('127.0.0.1', unused_port)
     rtspserver.csnum = 100
-    await rtspserver.rtsp_m6()
+    sessionid, serverport = await rtspserver.rtsp_m6()
     result, msg = server.join()
     if not result:
         pytest.fail(msg)
+    assert sessionid == '7C9C5678'
+    assert serverport == '5000'
 
 
 @pytest.mark.asyncio

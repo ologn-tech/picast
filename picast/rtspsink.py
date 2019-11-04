@@ -235,8 +235,8 @@ class RtspSink:
         await self._writer.drain()
 
         headers = await self.get_rtsp_headers()
-        if headers['CSeq'] != self.csnum:
-            return None, None
+        if self.csnum != int(headers['CSeq']):
+            raise ValueError('Unmatch sequence number: {}'.format(headers['CSeq']))
         if 'Transport' in headers:
             udp, client_port, server_port = self._parse_transport_header(headers['Transport'])
             self.logger.debug("server port {}".format(server_port))
@@ -254,7 +254,7 @@ class RtspSink:
         self._writer.write(m7req.encode('ASCII'))
         await self._writer.drain()
         headers = await self.get_rtsp_headers()
-        if headers['resp'] != "200 OK" or headers['CSeq'] != self.csnum:
+        if headers['resp'] != "200 OK" or int(headers['CSeq']) != self.csnum:
             return False
         return True
 

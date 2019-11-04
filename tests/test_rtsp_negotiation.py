@@ -94,7 +94,7 @@ class RtspSource(threading.Thread):
              "CSeq: 3\r\nContent-Type: text/paramters\r\nContent-Length: {}\r\n\r\n".format(len(body))
         m5 += body
         conn.sendall(m5.encode('ASCII'))
-        m5_resp = conn.recv(100).decode('UTF-8')
+        m5_resp = conn.recv(100).decode('ASCII')
         if m5_resp != "RTSP/1.0 200 OK\r\nCSeq: 3\r\n\r\n":
             self.status = False
             self.msg = "M5 bad response: {}".format(m5_resp)
@@ -109,9 +109,9 @@ class RtspSource(threading.Thread):
             self.status = False
             self.msg = "M6 request failure: {}".format(m6)
             return
-        m6_resp = b"RTSP/1.0 200 OK\r\nCSeq: 101\r\nSession: 7C9C5678;timeout=30\r\n" \
-                  b"Transport: RTP/AVP/UDP;unicast;client_port=1028;server_port=5000\r\n\r\n"
-        conn.sendall(m6_resp)
+        m6_resp = "RTSP/1.0 200 OK\r\nCSeq: 101\r\nSession: 7C9C5678;timeout=30\r\n" \
+                  "Transport: RTP/AVP/UDP;unicast;client_port=1028;server_port=5000\r\n\r\n"
+        conn.sendall(m6_resp.encode('ASCII'))
         sleep(0.01)
         # M7
         m7 = conn.recv(200)
