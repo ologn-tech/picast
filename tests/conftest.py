@@ -1,5 +1,7 @@
 # Configuration for pytest to automatically collect types.
 # Thanks to Guilherme Salgado.
+import socket
+
 import pytest
 from pyannotate_runtime import collect_types
 
@@ -22,3 +24,12 @@ def collect_types_fixture():
 
 def pytest_sessionfinish(session, exitstatus):
     collect_types.dump_stats("type_info.json")
+
+
+@pytest.fixture(scope="function")
+def unused_port():
+    s = socket.socket(socket.AF_INET, type=socket.SOCK_STREAM)
+    s.bind(('localhost', 0))
+    _, port = s.getsockname()
+    s.close()
+    return port

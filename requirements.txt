@@ -1,11 +1,11 @@
 # PyGObject # should install from debian/ubuntu package.
-# PyGObject-stubs
 zeroconf
 coverage
 coveralls
 flake8
 pyannotate
 pytest
+pytest-asyncio
 pytest-cov
 tox
 twine

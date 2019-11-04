@@ -16,7 +16,7 @@ A Simple Wireless Display Receiver on Raspberry Pi
 Description
 -----------
 
-picast is a simple wifi display receiver written by Python on Raspberry Pi.
+picast is a simple wifi display receiver written by Python3 on Raspberry Pi.
 
 
 Dependency
@@ -34,7 +34,7 @@ picast depends several external utilities and some are only on Raspbian.
 Installation
 ------------
 
-Run apt install command on Rasbpian / Raspberry Pi Zero W/WH, or Raspberry Pi 3
+Run apt install command on Raspbian(buster or later) / Raspberry Pi Zero W/WH, RaPi 3B+, RaPi 4.
 
 .. code-block:: console
 

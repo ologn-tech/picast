@@ -18,6 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import asyncio
 import os
 import sys
 from logging import config as LoggingConfig
@@ -31,7 +32,7 @@ gi.require_version('Gtk', '3.0')  # noqa: E402 # isort:skip
 gi.require_version('GstVideo', '1.0')  # noqa: E402 # isort:skip
 gi.require_version('GdkX11', '3.0')  # noqa: E402 # isort:skip
 
-from picast.rtspserver import RtspServer  # noqa: E402 # isort:skip
+from picast.rtspsink import RtspSink  # noqa: E402 # isort:skip
 from picast.player import GstPlayer, VlcPlayer  # noqa: E402 # isort:skip
 from picast.settings import Settings  # noqa: E402 # isort:skip
 from picast.wifip2p import WifiP2PServer  # noqa: E402 # isort:skip
@@ -51,9 +52,15 @@ def main():
         player = GstPlayer()
     else:
         player = VlcPlayer()
-    picast = RtspServer(player=player)
-    picast.start()
-    picast.join()
+
+    rtspserver = RtspSink(player)
+    # for python3.7 or later
+    # asyncio.run(rtspserver.run())
+    #
+    # for python3.6
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(rtspserver.run())
+    loop.close()
 
     return 0
 
