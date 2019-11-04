@@ -14,6 +14,8 @@ Current changes
 Added
 -----
 
+* Test for python 3.7 and 3.8
+
 Changed
 -------
 

@@ -24,7 +24,7 @@ import re
 import socket
 from logging import getLogger
 from time import sleep
-from typing import List
+from typing import Dict, List, Optional, Tuple
 
 from picast.discovery import ServiceDiscovery
 from picast.settings import Settings
@@ -48,7 +48,7 @@ class RtspSink:
         self._reader = None
         self._writer = None
 
-    async def get_rtsp_headers(self):
+    async def get_rtsp_headers(self) -> Dict[str, Optional[str]]:
         headers = await self.read_headers()
         results = {}
         firstline = headers[0]
@@ -59,7 +59,7 @@ class RtspSink:
                 status, reason = m.group(1, 2)
                 cmd = None
                 url = None
-                resp = "{} {}".format(status, reason)
+                resp = "{} {}".format(status, reason)  # type: Optional[str]
             else:
                 raise ValueError
         else:
@@ -78,12 +78,12 @@ class RtspSink:
         return results
 
     async def read_headers(self) -> List[str]:
-        inputs = await self._reader.readline()
-        line = inputs.decode('UTF-8')
         headers = []
+        inputs = await asyncio.wait_for(self._reader.readline(), timeout=1)
+        line = inputs.decode('UTF-8')
         while line != '\r\n':
             headers.append(line.rsplit('\r\n')[0])
-            inputs = await self._reader.readline()
+            inputs = await asyncio.wait_for(self._reader.readline(), timeout=1)
             line = inputs.decode('UTF-8')
         self.logger.debug("<< {}".format(headers))
         return headers
@@ -92,10 +92,11 @@ class RtspSink:
         length = headers.get('Content-Length', None)
         if length is None:
             return b''
-        return await self._reader.read(int(length))
+        return await asyncio.wait_for(self._reader.read(int(length)), timeout=1)
 
     @staticmethod
-    def _rtsp_response_header(cmd=None, url=None, res=None, seq=None, others=None):
+    def _rtsp_response_header(cmd: Optional[str] = None, url: Optional[str] = None, res: Optional[str] = None,
+                              seq: Optional[str] = None, others: Optional[List[Tuple[str, str]]] = None) -> str:
         if cmd is not None:
             msg = "{0:s} {1:s} RTSP/1.0".format(cmd, url)
         else:
@@ -111,12 +112,12 @@ class RtspSink:
         return msg
 
     @staticmethod
-    def _parse_transport_header(data):
+    def _parse_transport_header(data: str) -> Tuple[bool, str, str]:
         """ Parse Transport header value such as "Transport: RTP/AVP/UDP;unicast;client_port=1028;server_port=5000"
         """
         udp = True
-        client_port = 0
-        server_port = 0
+        client_port = '0'
+        server_port = '0'
         paramlist = data.split(';')
         for p in paramlist:
             if p.startswith('RTP'):
@@ -137,7 +138,7 @@ class RtspSink:
                 continue
         return udp, client_port, server_port
 
-    async def rtsp_m1(self):
+    async def rtsp_m1(self) -> bool:
         headers = await self.get_rtsp_headers()
         if headers['cmd'] != 'OPTIONS':
             return False
@@ -149,9 +150,9 @@ class RtspSink:
 
         return True
 
-    async def rtsp_m2(self):
+    async def rtsp_m2(self) -> bool:
         self.csnum = 100
-        s_data = self._rtsp_response_header(seq=self.csnum, cmd="OPTIONS",
+        s_data = self._rtsp_response_header(seq=str(self.csnum), cmd="OPTIONS",
                                             url="*", others=[('Require', 'org.wfa.wfd1.0')])
         self.logger.debug("<-{}".format(s_data))
         self._writer.write(s_data.encode('ASCII'))
@@ -162,7 +163,7 @@ class RtspSink:
             return False
         return True
 
-    async def rtsp_m3(self):
+    async def rtsp_m3(self) -> bool:
         headers = await self.get_rtsp_headers()
         if headers['cmd'] != 'GET_PARAMETER' or headers['url'] != 'rtsp://localhost/wfd1.0':
             return False
@@ -182,7 +183,7 @@ class RtspSink:
 
         m3resp = self._rtsp_response_header(seq=headers['CSeq'], res="200 OK",
                                             others=[('Content-Type', 'text/parameters'),
-                                                    ('Content-Length', len(msg))
+                                                    ('Content-Length', str(len(msg)))
                                                     ])
         m3resp += msg
         self.logger.debug("<-{}".format(m3resp))
@@ -190,7 +191,7 @@ class RtspSink:
         await self._writer.drain()
         return True
 
-    async def rtsp_m4(self):
+    async def rtsp_m4(self) -> bool:
         headers = await self.get_rtsp_headers()
         if headers['cmd'] != "SET_PARAMETER" or headers['url'] != "rtsp://localhost/wfd1.0":
             return False
@@ -202,7 +203,7 @@ class RtspSink:
         await self._writer.drain()
         return True
 
-    async def rtsp_m5(self):
+    async def rtsp_m5(self) -> bool:
         headers = await self.get_rtsp_headers()
         await self.read_body(headers)
         if headers['cmd'] != 'SET_PARAMETER':
@@ -219,13 +220,13 @@ class RtspSink:
         await self._writer.drain()
         return True
 
-    async def rtsp_m6(self):
+    async def rtsp_m6(self) -> Tuple[Optional[str], Optional[str]]:
         self.csnum += 1
         sessionid = None
         server_port = None
         m6req = self._rtsp_response_header(cmd="SETUP",
                                            url="rtsp://{0:s}/wfd1.0/streamid=0".format(self.config.peeraddress),
-                                           seq=self.csnum,
+                                           seq=str(self.csnum),
                                            others=[
                                                ('Transport',
                                                 'RTP/AVP/UDP;unicast;client_port={0:d}'.format(self.config.rtp_port))
@@ -235,26 +236,28 @@ class RtspSink:
         await self._writer.drain()
 
         headers = await self.get_rtsp_headers()
-        if self.csnum != int(headers['CSeq']):
+        if headers['CSeq'] is not None and headers['CSeq'] != str(self.csnum):
             raise ValueError('Unmatch sequence number: {}'.format(headers['CSeq']))
         if 'Transport' in headers:
+            assert headers['Transport'] is not None
             udp, client_port, server_port = self._parse_transport_header(headers['Transport'])
             self.logger.debug("server port {}".format(server_port))
         if 'Session' in headers:
+            assert headers['Session'] is not None
             sessionid = headers['Session'].split(';')[0]
         return sessionid, server_port
 
-    async def rtsp_m7(self, sessionid):
+    async def rtsp_m7(self, sessionid: str) -> bool:
         self.csnum += 1
         m7req = self._rtsp_response_header(cmd='PLAY',
                                            url='rtsp://{0:s}/wfd1.0/streamid=0'.format(self.config.peeraddress),
-                                           seq=self.csnum,
+                                           seq=str(self.csnum),
                                            others=[('Session', sessionid)])
         self.logger.debug("<-{}".format(m7req))
         self._writer.write(m7req.encode('ASCII'))
         await self._writer.drain()
         headers = await self.get_rtsp_headers()
-        if headers['resp'] != "200 OK" or int(headers['CSeq']) != self.csnum:
+        if headers['resp'] != "200 OK" or headers['CSeq'] != str(self.csnum):
             return False
         return True
 
@@ -282,7 +285,7 @@ class RtspSink:
         self.logger.info("---- Negotiation failed ----")
         return False
 
-    async def open_connection(self, host, port):
+    async def open_connection(self, host: str, port: int) -> bool:
         while self._max_attempt == 0 or self._attempt < self._max_attempt:
             self._attempt += 1
             await asyncio.sleep(1)
@@ -312,7 +315,7 @@ class RtspSink:
             else:
                 pass
 
-    async def rtspsrv(self, idrsock):
+    async def rtspsrv(self, idrsock) -> None:
         self.teardown = False
         while True:
             self.watchdog = 0
@@ -324,13 +327,14 @@ class RtspSink:
                 await self._writer.drain()
             elif headers['cmd'] == "SET_PARAMETER":
                 body = await self.read_body(headers)
-                if 'wfd_trigger_method: TEARDOWN' in body:
+                lines = body.decode('UTF-8').splitlines()
+                if 'wfd_trigger_method: TEARDOWN' in lines:
                     resp_msg = self._rtsp_response_header(seq=headers['CSeq'], res="200 OK")
                     self._writer.write(resp_msg)
                     await self._writer.drain()
 
                     self.logger.debug("Got TEARDOWN request.")
-                    m5_msg = self._rtsp_response_header(seq=self.csnum, cmd="TEARDOWN",
+                    m5_msg = self._rtsp_response_header(seq=str(self.csnum), cmd="TEARDOWN",
                                                         url="rtsp://localhost/wfd1.0")
                     self._writer.write(m5_msg)
                     await self._writer.drain()
@@ -341,7 +345,7 @@ class RtspSink:
             else:
                 continue
 
-    async def handle_recv_err(self, e, idrsock):
+    async def handle_recv_err(self, e, idrsock) -> None:
         err = e.args[0]
         if err == errno.EAGAIN or err == errno.EWOULDBLOCK:
             try:
@@ -358,16 +362,16 @@ class RtspSink:
                     self.logger.debug("socket error.")
             else:
                 self.csnum += 1
-                msg = b'wfd-idr-request\r\n'
-                idrreq = self._rtsp_response_header(seq=self.csnum,
+                msg = 'wfd-idr-request\r\n'
+                idrreq = self._rtsp_response_header(seq=str(self.csnum),
                                                     cmd="SET_PARAMETER", url="rtsp://localhost/wfd1.0",
                                                     others=[
-                                                        ('Content-Length', len(msg)),
+                                                        ('Content-Length', str(len(msg))),
                                                         ('Content-Type', 'text/parameters')
                                                     ])
-                self.logger.debug("idreq: {}{}".format(idrreq, msg))
-                self._writer.write(idrreq)
-                self._writer.write(msg)
+                idrreq += msg
+                self.logger.debug("idreq: {}".format(idrreq))
+                self._writer.write(idrreq.encode('ASCII'))
                 await self._writer.drain()
         else:
             self.logger.debug("Exit becuase of socket error.")

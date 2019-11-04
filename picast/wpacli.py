@@ -85,13 +85,15 @@ class WpaCli:
         status = self.cmd("-i", interface, "wps_pin", "any", "{0:s}".format(pin), "{0:d}".format(timeout))
         return status
 
-    def get_interfaces(self) -> Tuple[str, List[str]]:
+    def get_interfaces(self) -> Tuple[Optional[str], List[str]]:
         selected = None
         interfaces = []
         status = self.cmd("interface")
         for ln in status:
             if ln.startswith("Selected interface"):
-                selected = re.match(r"Selected interface\s\'(.+)\'$", ln).group(1)
+                m = re.match(r"Selected interface\s\'(.+)\'$", ln)
+                if m is not None:
+                    selected = m.group(1)
             elif ln.startswith("Available interfaces:"):
                 pass
             else:

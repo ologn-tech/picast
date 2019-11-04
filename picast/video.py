@@ -24,6 +24,7 @@ import os
 import re
 import subprocess
 from logging import getLogger
+from typing import Dict
 
 from picast.settings import Settings
 
@@ -72,12 +73,15 @@ class RasberryPiVideo:
         logger.debug("tvservice: {}".format(data))
         return data
 
-    def _retrieve_tvservice(self, mode: TvModes) -> dict:
+    def _retrieve_tvservice(self, mode: TvModes) -> Dict[str, str]:
         if mode is self.TvModes.Current:
             data = self._call_tvservice("tvservice -s")
             r = re.compile(r'([0-9]+)x([0-9]+),\s+@\s+([1-9][0-9])\.[0-9][0-9]HZ')
             m = r.match(data)
-            status = {'width': m.group(1), 'height': m.group(2), 'rate': m.group(3)}
+            if m is not None:
+                status = {'width': m.group(1), 'height': m.group(2), 'rate': m.group(3)}
+            else:
+                status = {}
         elif mode is self.TvModes.CEA:
             data = self._call_tvservice("tvservice -m CEA -j")
             status = json.loads(data)
@@ -86,7 +90,7 @@ class RasberryPiVideo:
             status = json.loads(data)
         return status
 
-    def _get_display_resolutions(self):
+    def _get_display_resolutions(self) -> None:
         cea = 0x01
         vesa = 0x00
         hh = 0x00

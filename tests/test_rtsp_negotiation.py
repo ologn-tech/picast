@@ -1,4 +1,4 @@
-
+import asyncio
 import socket
 import threading
 from time import sleep
@@ -149,8 +149,8 @@ async def test_rtsp_negotiation(monkeypatch, unused_port):
     sleep(0.5)
     player = MockPlayer()
     rtsp_sink = RtspSink(player)
-    await rtsp_sink.open_connection('127.0.0.1', unused_port)
-    result = await rtsp_sink.negotiate()
+    await asyncio.wait_for(rtsp_sink.open_connection('127.0.0.1', unused_port), timeout=10)
+    result = await asyncio.wait_for(rtsp_sink.negotiate(), timeout=10)
     status, msg = rtsp_source.join()
     if not status or not result:
         pytest.fail(msg)
