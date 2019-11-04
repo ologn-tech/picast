@@ -17,8 +17,12 @@ Added
 Changed
 -------
 
+* Use AsyncIO for network communication.(#4)
+
 Fixed
 -----
+
+* Bug: fails to recieve M4 message because M3 reciever can read both M3 and M4.
 
 Deprecated
 ----------
