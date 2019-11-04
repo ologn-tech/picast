@@ -55,6 +55,7 @@ class RtspSource(threading.Thread):
         m2_resp = b"RTSP/1.0 200 OK\r\nCSeq: 100\r\nPublic: org.wfa.wfd1.0, SETUP, TEARDOWN, PLAY, PAUSE, GET_PARAMETER, SET_PARAMETER\r\n\r\n"
         conn.sendall(m2_resp)
         sleep(0.01)
+
         # M3
         m3_body = "wfd_video_formats\r\nwfd_audio_codecs\r\nwfd_3d_video_formats\r\nwfd_content_protection\r\n" \
                   "wfd_display_edid\r\nwfd_coupled_sink\r\nwfd_client_rtp_ports\r\n"

@@ -23,7 +23,7 @@ setup(name='picast',
       requires=['PyGObject', 'pyyaml', 'zeroconf'],
       scripts=['bin/picast'],
       classifiers=[
-          'Development Status :: 2 - Pre-Alpha',
+          'Development Status :: 3 - Alpha',
           'Environment :: X11 Applications',
           'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
           'Operating System :: POSIX :: Linux',
