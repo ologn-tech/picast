@@ -365,9 +365,9 @@ class RtspSink:
                 msg = 'wfd-idr-request\r\n'
                 idrreq = self._rtsp_response_header(seq=str(self.csnum),
                                                     cmd="SET_PARAMETER", url="rtsp://localhost/wfd1.0",
-                                                    others=[ ('Content-Length', str(len(msg))),
-                                                             ('Content-Type', 'text/parameters')
-                                                             ])
+                                                    others=[('Content-Length', str(len(msg))),
+                                                            ('Content-Type', 'text/parameters')
+                                                            ])
                 idrreq += msg
                 self.logger.debug("idreq: {}".format(idrreq))
                 self._writer.write(idrreq.encode('ASCII'))
