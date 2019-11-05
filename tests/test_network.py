@@ -1,16 +1,15 @@
-import asyncio
 import socket
 import threading
 
 import pytest
 
-from picast.rtspsink import RtspSink
+from picast.rtspsink import RtspSink, RTSPTransport
 from picast.video import RasberryPiVideo
 
 
 class MockServer(threading.Thread):
 
-    def __init__(self, port, target="open"):
+    def __init__(self, port: int, target: str = "open"):
         super(MockServer, self).__init__()
         self.port = port
         self.target = target
@@ -25,6 +24,9 @@ class MockServer(threading.Thread):
 
         if self.target == "open":
             pass
+        elif self.target == "readline":
+            m1 = b"OPTIONS * RTSP/1.0\r\nCSeq: 0\r\nRequire: org.wfa.wfd1.0\r\n\r\n"
+            conn.sendall(m1)
         elif self.target == "m1":
             m1 = b"OPTIONS * RTSP/1.0\r\nCSeq: 0\r\nRequire: org.wfa.wfd1.0\r\n\r\n"
             conn.sendall(m1)
@@ -62,12 +64,14 @@ class MockServer(threading.Thread):
                 self.status = False
                 self.msg = "M3 bad request: {}".format(m3_resp)
         elif self.target == "m4":
-                m4 = b"SET_PARAMETER rtsp://localhost/wfd1.0 RTSP/1.0\r\nCSeq: 2\r\nContent-Type: text/parameters\r\nContent-Length: 302\r\n\r\n" \
-                     b"wfd_video_formats: 00 00 01 01 00000001 00000000 00000000 00 0000 0000 00 none none\r\nwfd_audio_codecs: LPCM 00000002 00\r\n" \
-                     b"wfd_presentation_URL: rtsp://192.168.173.80/wfd1.0/streamid=0 none\r\n" \
-                     b"wfd_client_rtp_ports: RTP/AVP/UDP;unicast 1028 0 mode=play\r\n"
-                conn.sendall(m4)
-                m4_resp = conn.recv(1000).decode('UTF-8')
+                msg = "wfd_video_formats: 00 00 01 01 00000001 00000000 00000000 00 0000 0000 00 none none\r\nwfd_audio_codecs: LPCM 00000002 00\r\n" \
+                     "wfd_presentation_URL: rtsp://192.168.173.80/wfd1.0/streamid=0 none\r\n" \
+                     "wfd_client_rtp_ports: RTP/AVP/UDP;unicast 1028 0 mode=play\r\n"
+                m4 = "SET_PARAMETER rtsp://localhost/wfd1.0 RTSP/1.0\r\nCSeq: 2\r\n" \
+                     "Content-Type: text/parameters\r\nContent-Length: {}\r\n\r\n".format(len(msg))
+                m4 += msg
+                conn.sendall(m4.encode("ASCII"))
+                m4_resp = conn.recv(1000).decode('ASCII')
                 if m4_resp != "RTSP/1.0 200 OK\r\nCSeq: 2\r\n\r\n":
                     self.status = False
                     self.msg = "M4 bad response: {}".format(m4_resp)
@@ -112,8 +116,46 @@ class MockServer(threading.Thread):
         return self.status, self.msg
 
 
-@pytest.mark.asyncio
-async def test_open_connection(monkeypatch, unused_port):
+def test_open_connection(unused_port):
+    server = MockServer(unused_port, target="open")
+    server.start()
+    transport = RTSPTransport('127.0.0.1', unused_port)
+    assert transport is not None
+    server.join()
+
+
+def test_readline(unused_port):
+    server = MockServer(unused_port, target="readline")
+    server.start()
+    transport = RTSPTransport('127.0.0.1', unused_port)
+    line = transport.readline()
+    assert line == b"OPTIONS * RTSP/1.0"
+    server.join()
+    transport.close()
+
+
+def test_read_headers(monkeypatch, unused_port):
+    def videomock(self):
+        return "06 00 01 10 000101C3 00208006 00000000 00 0000 0000 00 none none"
+
+    def nonemock(self, *args):
+        return
+
+    monkeypatch.setattr(RasberryPiVideo, "get_wfd_video_formats", videomock)
+    monkeypatch.setattr(RasberryPiVideo, "_get_display_resolutions", nonemock)
+
+    server = MockServer(unused_port, target="readline")
+    server.start()
+    player = None
+    rtspsink = RtspSink(player)
+    rtspsink.sock = RTSPTransport('127.0.0.1', unused_port)
+    headers = rtspsink.read_headers()
+    assert headers == ['OPTIONS * RTSP/1.0', 'CSeq: 0', 'Require: org.wfa.wfd1.0']
+    server.join()
+    rtspsink.sock.close()
+
+
+def test_get_rtsp_headers(monkeypatch, unused_port):
     def videomock(self):
         return "06 00 01 10 000101C3 00208006 00000000 00 0000 0000 00 none none"
     def nonemock(self, *args):
@@ -121,16 +163,17 @@ async def test_open_connection(monkeypatch, unused_port):
     monkeypatch.setattr(RasberryPiVideo, "get_wfd_video_formats", videomock)
     monkeypatch.setattr(RasberryPiVideo, "_get_display_resolutions", nonemock)
 
-    server = MockServer(unused_port)
+    server = MockServer(unused_port, target="readline")
     server.start()
     player = None
-    rtspserver = RtspSink(player)
-    assert await rtspserver.open_connection('127.0.0.1', unused_port)
+    rtspsink = RtspSink(player)
+    rtspsink.sock = RTSPTransport('127.0.0.1', unused_port)
+    headers = rtspsink.get_rtsp_headers()
+    assert headers == {'CSeq': '0', 'Require': 'org.wfa.wfd1.0', 'cmd': 'OPTIONS', 'resp': None, 'url': '*'}
     server.join()
 
 
-@pytest.mark.asyncio
-async def test_rtsp_m1(monkeypatch, unused_port):
+def test_rtsp_m1(monkeypatch, unused_port):
     def videomock(self):
         return "06 00 01 10 000101C3 00208006 00000000 00 0000 0000 00 none none"
     def nonemock(self, *args):
@@ -141,16 +184,15 @@ async def test_rtsp_m1(monkeypatch, unused_port):
     server = MockServer(unused_port, target="m1")
     server.start()
     player = None
-    rtspserver = RtspSink(player)
-    await rtspserver.open_connection('127.0.0.1', unused_port)
-    await rtspserver.rtsp_m1()
+    rtspsink = RtspSink(player)
+    rtspsink.sock = RTSPTransport('127.0.0.1', unused_port)
+    rtspsink.rtsp_m1()
     result, msg = server.join()
     if not result:
         pytest.fail(msg)
 
 
-@pytest.mark.asyncio
-async def test_rtsp_m2(monkeypatch, unused_port):
+def test_rtsp_m2(monkeypatch, unused_port):
     def videomock(self):
         return "06 00 01 10 000101C3 00208006 00000000 00 0000 0000 00 none none"
     def nonemock(self, *args):
@@ -161,16 +203,15 @@ async def test_rtsp_m2(monkeypatch, unused_port):
     server = MockServer(unused_port, target="m2")
     server.start()
     player = None
-    rtspserver = RtspSink(player)
-    await rtspserver.open_connection('127.0.0.1', unused_port)
-    await rtspserver.rtsp_m2()
+    rtspsink = RtspSink(player)
+    rtspsink.sock = RTSPTransport('127.0.0.1', unused_port)
+    rtspsink.rtsp_m2()
     result, msg = server.join()
     if not result:
         pytest.fail(msg)
 
 
-@pytest.mark.asyncio
-async def test_rtsp_m3(monkeypatch, unused_port):
+def test_rtsp_m3(monkeypatch, unused_port):
     def videomock(self):
         return "06 00 01 10 000101C3 00208006 00000000 00 0000 0000 00 none none"
     def nonemock(self, *args):
@@ -181,16 +222,15 @@ async def test_rtsp_m3(monkeypatch, unused_port):
     server = MockServer(unused_port, target="m3")
     server.start()
     player = None
-    rtspserver = RtspSink(player)
-    await rtspserver.open_connection('127.0.0.1', unused_port)
-    await rtspserver.rtsp_m3()
+    rtspsink = RtspSink(player)
+    rtspsink.sock = RTSPTransport('127.0.0.1', unused_port)
+    rtspsink.rtsp_m3()
     result, msg = server.join()
     if not result:
         pytest.fail(msg)
 
 
-@pytest.mark.asyncio
-async def test_rtsp_m4(monkeypatch, unused_port):
+def test_rtsp_m4(monkeypatch, unused_port):
     def videomock(self):
         return "06 00 01 10 000101C3 00208006 00000000 00 0000 0000 00 none none"
     def nonemock(self, *args):
@@ -201,16 +241,15 @@ async def test_rtsp_m4(monkeypatch, unused_port):
     server = MockServer(unused_port, target="m4")
     server.start()
     player = None
-    rtspserver = RtspSink(player)
-    await rtspserver.open_connection('127.0.0.1', unused_port)
-    await rtspserver.rtsp_m4()
+    rtspsink = RtspSink(player)
+    rtspsink.sock = RTSPTransport('127.0.0.1', unused_port)
+    rtspsink.rtsp_m4()
     result, msg = server.join()
     if not result:
         pytest.fail(msg)
 
 
-@pytest.mark.asyncio
-async def test_rtsp_m5(monkeypatch, unused_port):
+def test_rtsp_m5(monkeypatch, unused_port):
     def videomock(self):
         return "06 00 01 10 000101C3 00208006 00000000 00 0000 0000 00 none none"
     def nonemock(self, *args):
@@ -221,16 +260,15 @@ async def test_rtsp_m5(monkeypatch, unused_port):
     server = MockServer(unused_port, target="m5")
     server.start()
     player = None
-    rtspserver = RtspSink(player)
-    await rtspserver.open_connection('127.0.0.1', unused_port)
-    await rtspserver.rtsp_m5()
+    rtspsink = RtspSink(player)
+    rtspsink.sock = RTSPTransport('127.0.0.1', unused_port)
+    rtspsink.rtsp_m5()
     result, msg = server.join()
     if not result:
         pytest.fail(msg)
 
 
-@pytest.mark.asyncio
-async def test_rtsp_m6(monkeypatch, unused_port):
+def test_rtsp_m6(monkeypatch, unused_port):
     def videomock(self):
         return "06 00 01 10 000101C3 00208006 00000000 00 0000 0000 00 none none"
     def nonemock(self, *args):
@@ -241,10 +279,10 @@ async def test_rtsp_m6(monkeypatch, unused_port):
     server = MockServer(unused_port, target="m6")
     server.start()
     player = None
-    rtspserver = RtspSink(player)
-    await rtspserver.open_connection('127.0.0.1', unused_port)
-    rtspserver.csnum = 100
-    sessionid, serverport = await rtspserver.rtsp_m6()
+    rtspsink = RtspSink(player)
+    rtspsink.sock = RTSPTransport('127.0.0.1', unused_port)
+    rtspsink.csnum = 100
+    sessionid, serverport = rtspsink.rtsp_m6()
     result, msg = server.join()
     if not result:
         pytest.fail(msg)
@@ -252,8 +290,7 @@ async def test_rtsp_m6(monkeypatch, unused_port):
     assert serverport == '5000'
 
 
-@pytest.mark.asyncio
-async def test_rtsp_m7(monkeypatch, unused_port):
+def test_rtsp_m7(monkeypatch, unused_port):
     def videomock(self):
         return "06 00 01 10 000101C3 00208006 00000000 00 0000 0000 00 none none"
     def nonemock(self, *args):
@@ -264,11 +301,11 @@ async def test_rtsp_m7(monkeypatch, unused_port):
     server = MockServer(unused_port, target="m7")
     server.start()
     player = None
-    rtspserver = RtspSink(player)
-    await rtspserver.open_connection('127.0.0.1', unused_port)
-    rtspserver.csnum = 101
+    rtspsink = RtspSink(player)
+    rtspsink.sock = RTSPTransport('127.0.0.1', unused_port)
+    rtspsink.csnum = 101
     sessionid = '7C9C5678'
-    await rtspserver.rtsp_m7(sessionid)
+    rtspsink.rtsp_m7(sessionid)
     result, msg = server.join()
     if not result:
         pytest.fail(msg)

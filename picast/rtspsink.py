@@ -18,10 +18,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import asyncio
 import errno
 import re
 import socket
+import threading
 from logging import getLogger
 from time import sleep
 from typing import Dict, List, Optional, Tuple
@@ -31,9 +31,76 @@ from picast.settings import Settings
 from picast.video import RasberryPiVideo
 
 
-class RtspSink:
+class RTSPTransport:
+
+    def __init__(self, host, port):
+        self.buffer = None
+        self._max_attempt = 1000
+        self.open_connection(host, port)
+
+    def open_connection(self, host, port):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+        for _ in range(self._max_attempt):
+            try:
+                sock.connect((host, port))
+            except Exception:
+                sleep(0.5)
+            else:
+                break
+        sock.settimeout(1)
+        self.sock = sock
+
+    def close(self):
+        self.sock.close()
+
+    def read(self, size) -> bytes:
+        if self.buffer:
+            if len(self.buffer) > size:
+                res = self.buffer[:size]
+                self.buffer = self.buffer[size:]
+            else:
+                res = self.buffer
+                self.buffer = None
+                if len(res) < size:
+                    res += self.sock.recv(size - len(res))
+        else:
+            res = self.sock.recv(size)
+        return res
+
+    def readline(self) -> bytes:
+        if self.buffer is None:
+            self.buffer = self.sock.recv(1024)
+        while True:
+            if b'\r\n' in self.buffer:
+                (line, self.buffer) = self.buffer.split(b'\r\n', 1)
+                return line
+            else:
+                try:
+                    more = self.sock.recv(1024)
+                except BlockingIOError:
+                    break
+                if not more:
+                    break
+                else:
+                    self.buffer += more
+        if self.buffer is not None:
+            res = self.buffer
+            self.buffer = None
+            return res
+        else:
+            return b''
+
+    def write(self, b: bytes):
+        return self.sock.sendall(b)
+
+
+class RtspSink(threading.Thread):
 
     def __init__(self,  player, logger='picast'):
+        super(RtspSink, self).__init__(name='rtsp-server-0', daemon=True)
         self.config = Settings()
         self.logger = getLogger(logger)
         self.player = player
@@ -43,13 +110,9 @@ class RtspSink:
         self.video = RasberryPiVideo()
         self.wfd_parameters = self.config.get_wfd_parameters()
         self.wfd_video_formats = self.video.get_wfd_video_formats()
-        self._attempt = 0
-        self._max_attempt = 1000
-        self._reader = None
-        self._writer = None
 
-    async def get_rtsp_headers(self) -> Dict[str, Optional[str]]:
-        headers = await self.read_headers()
+    def get_rtsp_headers(self) -> Dict[str, Optional[str]]:
+        headers = self.read_headers()
         results = {}
         firstline = headers[0]
         regex = re.compile(r"RTSP/1.0 ([0-9]+) (\w+([ ]\w)*)")
@@ -72,27 +135,32 @@ class RtspSink:
         results['resp'] = resp
         for h in headers[1:]:
             pos = h.find(':')
+            if not pos:
+                break
             key = h[:pos]
             val = h[pos + 2:]
             results[key] = val
         return results
 
-    async def read_headers(self) -> List[str]:
+    def read_headers(self) -> List[str]:
         headers = []
-        inputs = await asyncio.wait_for(self._reader.readline(), timeout=1)
-        line = inputs.decode('UTF-8')
-        while line != '\r\n':
-            headers.append(line.rsplit('\r\n')[0])
-            inputs = await asyncio.wait_for(self._reader.readline(), timeout=1)
-            line = inputs.decode('UTF-8')
+
+        line = self.sock.readline()
+        while not line:
+            line = self.sock.readline()
+
+        while line:
+            headers.append(line.decode('UTF-8'))
+            line = self.sock.readline()
         self.logger.debug("<< {}".format(headers))
         return headers
 
-    async def read_body(self, headers) -> bytes:
+    def read_body(self, headers) -> bytes:
         length = headers.get('Content-Length', None)
         if length is None:
             return b''
-        return await asyncio.wait_for(self._reader.read(int(length)), timeout=1)
+        length = int(length)
+        return self.sock.read(length)
 
     @staticmethod
     def _rtsp_response_header(cmd: Optional[str] = None, url: Optional[str] = None, res: Optional[str] = None,
@@ -138,36 +206,33 @@ class RtspSink:
                 continue
         return udp, client_port, server_port
 
-    async def rtsp_m1(self) -> bool:
-        headers = await self.get_rtsp_headers()
+    def rtsp_m1(self) -> bool:
+        headers = self.get_rtsp_headers()
         if headers['cmd'] != 'OPTIONS':
             return False
         s_data = self._rtsp_response_header(seq=headers['CSeq'], res="200 OK",
                                             others=[("Public", "org.wfa.wfd1.0, SET_PARAMETER, GET_PARAMETER")])
         self.logger.debug("<-{}".format(s_data))
-        self._writer.write(s_data.encode('ASCII'))
-        await self._writer.drain()
-
+        self.sock.write(s_data.encode('ASCII'))
         return True
 
-    async def rtsp_m2(self) -> bool:
+    def rtsp_m2(self) -> bool:
         self.csnum = 100
         s_data = self._rtsp_response_header(seq=str(self.csnum), cmd="OPTIONS",
                                             url="*", others=[('Require', 'org.wfa.wfd1.0')])
         self.logger.debug("<-{}".format(s_data))
-        self._writer.write(s_data.encode('ASCII'))
-        await self._writer.drain()
-
-        headers = await self.get_rtsp_headers()
+        self.sock.write(s_data.encode('ASCII'))
+        sleep(0.1)
+        headers = self.get_rtsp_headers()
         if headers['CSeq'] != '100' or headers['resp'] != "200 OK":
             return False
         return True
 
-    async def rtsp_m3(self) -> bool:
-        headers = await self.get_rtsp_headers()
+    def rtsp_m3(self) -> bool:
+        headers = self.get_rtsp_headers()
         if headers['cmd'] != 'GET_PARAMETER' or headers['url'] != 'rtsp://localhost/wfd1.0':
             return False
-        body = await self.read_body(headers)
+        body = self.read_body(headers)
         msg = ''
         for req in body.decode('UTF-8').split('\r\n'):
             if req == '':
@@ -187,40 +252,36 @@ class RtspSink:
                                                     ])
         m3resp += msg
         self.logger.debug("<-{}".format(m3resp))
-        self._writer.write(m3resp.encode('ASCII'))
-        await self._writer.drain()
+        self.sock.write(m3resp.encode('ASCII'))
         return True
 
-    async def rtsp_m4(self) -> bool:
-        headers = await self.get_rtsp_headers()
+    def rtsp_m4(self) -> bool:
+        headers = self.get_rtsp_headers()
         if headers['cmd'] != "SET_PARAMETER" or headers['url'] != "rtsp://localhost/wfd1.0":
             return False
-        await self.read_body(headers)
+        self.read_body(headers)
         # FIXME: parse body here to retrieve video mode and set actual mode.
         s_data = self._rtsp_response_header(res="200 OK", seq=headers['CSeq'])
         self.logger.debug("<-{}".format(s_data))
-        self._writer.write(s_data.encode('ASCII'))
-        await self._writer.drain()
+        self.sock.write(s_data.encode('ASCII'))
         return True
 
-    async def rtsp_m5(self) -> bool:
-        headers = await self.get_rtsp_headers()
-        await self.read_body(headers)
+    def rtsp_m5(self) -> bool:
+        headers = self.get_rtsp_headers()
+        self.read_body(headers)
         if headers['cmd'] != 'SET_PARAMETER':
             self.logger.debug("M5: got other than SET_PARAMETER request.")
             s_data = self._rtsp_response_header(res="400 Bad Requests", seq=headers['CSeq'])
             self.logger.debug("<-{}".format(s_data))
-            self._writer.write(s_data.encode('ASCII'))
-            await self._writer.drain()
+            self.sock.write(s_data.encode('ASCII'))
             return False
         # FIXME: analyze body to have  'wfd_trigger_method: SETUP'
         s_data = self._rtsp_response_header(res="200 OK", seq=headers['CSeq'])
         self.logger.debug("<-{}".format(s_data))
-        self._writer.write(s_data.encode('ASCII'))
-        await self._writer.drain()
+        self.sock.write(s_data.encode('ASCII'))
         return True
 
-    async def rtsp_m6(self) -> Tuple[Optional[str], Optional[str]]:
+    def rtsp_m6(self) -> Tuple[Optional[str], Optional[str]]:
         self.csnum += 1
         sessionid = None
         server_port = None
@@ -232,10 +293,9 @@ class RtspSink:
                                                 'RTP/AVP/UDP;unicast;client_port={0:d}'.format(self.config.rtp_port))
                                            ])
         self.logger.debug("<-{}".format(m6req))
-        self._writer.write(m6req.encode('ASCII'))
-        await self._writer.drain()
+        self.sock.write(m6req.encode('ASCII'))
 
-        headers = await self.get_rtsp_headers()
+        headers = self.get_rtsp_headers()
         if headers['CSeq'] is not None and headers['CSeq'] != str(self.csnum):
             raise ValueError('Unmatch sequence number: {}'.format(headers['CSeq']))
         if 'Transport' in headers:
@@ -247,105 +307,74 @@ class RtspSink:
             sessionid = headers['Session'].split(';')[0]
         return sessionid, server_port
 
-    async def rtsp_m7(self, sessionid: str) -> bool:
+    def rtsp_m7(self, sessionid: str) -> bool:
         self.csnum += 1
         m7req = self._rtsp_response_header(cmd='PLAY',
                                            url='rtsp://{0:s}/wfd1.0/streamid=0'.format(self.config.peeraddress),
                                            seq=str(self.csnum),
                                            others=[('Session', sessionid)])
         self.logger.debug("<-{}".format(m7req))
-        self._writer.write(m7req.encode('ASCII'))
-        await self._writer.drain()
-        headers = await self.get_rtsp_headers()
+        self.sock.write(m7req.encode('ASCII'))
+        headers = self.get_rtsp_headers()
         if headers['resp'] != "200 OK" or headers['CSeq'] != str(self.csnum):
             return False
         return True
 
-    async def negotiate(self) -> bool:
+    def negotiate(self) -> bool:
         self.logger.debug("---- Start negotiation ----")
         while True:
-            if not await self.rtsp_m1():
+            if not self.rtsp_m1():
                 break
-            if not await self.rtsp_m2():
+            if not self.rtsp_m2():
                 break
-            if not await self.rtsp_m3():
+            if not self.rtsp_m3():
                 break
-            if not await self.rtsp_m4():
+            if not self.rtsp_m4():
                 break
-            if not await self.rtsp_m5():
+            if not self.rtsp_m5():
                 break
-            await asyncio.sleep(0.1)
-            sessionid, server_port = await self.rtsp_m6()
+            sessionid, server_port = self.rtsp_m6()
             if sessionid is None:
                 break
-            if not await self.rtsp_m7(sessionid):
+            if not self.rtsp_m7(sessionid):
                 break
             self.logger.info("---- Negotiation successful ----")
             return True
         self.logger.info("---- Negotiation failed ----")
         return False
 
-    async def open_connection(self, host: str, port: int) -> bool:
-        while self._max_attempt == 0 or self._attempt < self._max_attempt:
-            self._attempt += 1
-            await asyncio.sleep(1)
-            try:
-                self._reader, self._writer = await asyncio.open_connection(host, port)
-                return True
-            except ConnectionRefusedError:
-                pass
-        return False
-
-    async def run(self):
-        self.logger.info("Register mDNS/SD entry.")
-        sd = ServiceDiscovery()
-        sd.register()
-        self.logger.info("Start connecting...")
-        # FIXME: wait for dhcpd leased an address to new client here then initiating to connect
-        while True:
-            if self.open_connection(self.config.peeraddress, self.config.rtsp_port):
-                self.logger.info("Connected to Wfd-source in {}.".format(self.config.peeraddress))
-                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as idrsock:
-                    idrsock_address = ('127.0.0.1', 0)
-                    idrsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                    idrsock.bind(idrsock_address)
-                    if self.negotiate():
-                        self.player.start()
-                        await self.rtspsrv(idrsock)
-            else:
-                pass
-
-    async def rtspsrv(self, idrsock) -> None:
+    def rtspsrv(self, idrsock) -> None:
         self.teardown = False
         while True:
-            self.watchdog = 0
-            headers = await self.get_rtsp_headers()
-            if headers['cmd'] == "GET_PARAMETER" and headers['url'] == "rtsp://localhost/wfd1.0":
-                await self.read_body(headers)
-                resp_msg = self._rtsp_response_header(seq=headers['CSeq'], res="200 OK")
-                self._writer.write(resp_msg)
-                await self._writer.drain()
-            elif headers['cmd'] == "SET_PARAMETER":
-                body = await self.read_body(headers)
-                lines = body.decode('UTF-8').splitlines()
-                if 'wfd_trigger_method: TEARDOWN' in lines:
-                    resp_msg = self._rtsp_response_header(seq=headers['CSeq'], res="200 OK")
-                    self._writer.write(resp_msg)
-                    await self._writer.drain()
-
-                    self.logger.debug("Got TEARDOWN request.")
-                    m5_msg = self._rtsp_response_header(seq=str(self.csnum), cmd="TEARDOWN",
-                                                        url="rtsp://localhost/wfd1.0")
-                    self._writer.write(m5_msg)
-                    await self._writer.drain()
-                    self.teardown = True
-                    self.player.stop()
-            elif self.teardown and headers['cmd'] is None and headers['resp'] == "200 OK":
-                break
+            try:
+                headers = self.get_rtsp_headers()
+            except socket.error as e:
+                self.handle_recv_err(e, idrsock)
             else:
-                continue
+                self.watchdog = 0
+                if headers['cmd'] == "GET_PARAMETER" and headers['url'] == "rtsp://localhost/wfd1.0":
+                    self.read_body(headers)
+                    resp_msg = self._rtsp_response_header(seq=headers['CSeq'], res="200 OK")
+                    self.sock.write(resp_msg)
+                elif headers['cmd'] == "SET_PARAMETER":
+                    body = self.read_body(headers)
+                    lines = body.decode('UTF-8').splitlines()
+                    if 'wfd_trigger_method: TEARDOWN' in lines:
+                        resp_msg = self._rtsp_response_header(seq=headers['CSeq'], res="200 OK")
+                        self.sock.write(resp_msg)
 
-    async def handle_recv_err(self, e, idrsock) -> None:
+                        self.logger.debug("Got TEARDOWN request.")
+                        m5_msg = self._rtsp_response_header(seq=str(self.csnum), cmd="TEARDOWN",
+                                                            url="rtsp://localhost/wfd1.0")
+                        self.sock.write(m5_msg)
+                        self.teardown = True
+                        self.player.stop()
+                elif self.teardown and headers['cmd'] is None and headers['resp'] == "200 OK":
+                    break
+                else:
+                    continue
+
+    def handle_recv_err(self, e, idrsock) -> None:
         err = e.args[0]
         if err == errno.EAGAIN or err == errno.EWOULDBLOCK:
             try:
@@ -370,7 +399,19 @@ class RtspSink:
                                                             ])
                 idrreq += msg
                 self.logger.debug("idreq: {}".format(idrreq))
-                self._writer.write(idrreq.encode('ASCII'))
-                await self._writer.drain()
+                self.sock.write(idrreq.encode('ASCII'))
         else:
             self.logger.debug("Exit becuase of socket error.")
+
+    def run(self):
+        self.logger.info("Register mDNS/SD entry.")
+        sd = ServiceDiscovery()
+        sd.register()
+        self.sock = RTSPTransport(self.config.peeraddress, self.config.rtsp_port)
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as idrsock:
+            idrsock_address = ('127.0.0.1', 0)
+            idrsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            idrsock.bind(idrsock_address)
+            if self.negotiate():
+                self.player.start()
+                self.rtspsrv(idrsock)

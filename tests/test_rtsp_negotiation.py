@@ -5,7 +5,7 @@ from time import sleep
 
 import pytest
 
-from picast.rtspsink import RtspSink
+from picast.rtspsink import RtspSink, RTSPTransport
 from picast.video import RasberryPiVideo
 
 
@@ -78,12 +78,14 @@ class RtspSource(threading.Thread):
             return
         sleep(0.01)
         # M4
-        m4 = b"SET_PARAMETER rtsp://localhost/wfd1.0 RTSP/1.0\r\nCSeq: 2\r\nContent-Type: text/parameters\r\nContent-Length: 302\r\n\r\n" \
-             b"wfd_video_formats: 00 00 01 01 00000001 00000000 00000000 00 0000 0000 00 none none\r\nwfd_audio_codecs: LPCM 00000002 00\r\n" \
-             b"wfd_presentation_URL: rtsp://192.168.173.80/wfd1.0/streamid=0 none\r\n" \
-             b"wfd_client_rtp_ports: RTP/AVP/UDP;unicast 1028 0 mode=play\r\n"
-        conn.sendall(m4)
-        m4_resp = conn.recv(1000).decode('UTF-8')
+        msg = "wfd_video_formats: 00 00 01 01 00000001 00000000 00000000 00 0000 0000 00 none none\r\nwfd_audio_codecs: LPCM 00000002 00\r\n" \
+             "wfd_presentation_URL: rtsp://192.168.173.80/wfd1.0/streamid=0 none\r\n" \
+             "wfd_client_rtp_ports: RTP/AVP/UDP;unicast 1028 0 mode=play\r\n"
+        m4 = "SET_PARAMETER rtsp://localhost/wfd1.0 RTSP/1.0\r\nCSeq: 2\r\n" \
+             "Content-Type: text/parameters\r\nContent-Length: {}\r\n\r\n".format(len(msg))
+        m4 += msg
+        conn.sendall(m4.encode('ASCII'))
+        m4_resp = conn.recv(1000).decode('ASCII')
         if m4_resp != "RTSP/1.0 200 OK\r\nCSeq: 2\r\n\r\n":
             self.status = False
             self.msg = "M4 bad response: {}".format(m4_resp)
@@ -148,9 +150,9 @@ async def test_rtsp_negotiation(monkeypatch, unused_port):
     rtsp_source.start()
     sleep(0.5)
     player = MockPlayer()
-    rtsp_sink = RtspSink(player)
-    await asyncio.wait_for(rtsp_sink.open_connection('127.0.0.1', unused_port), timeout=10)
-    result = await asyncio.wait_for(rtsp_sink.negotiate(), timeout=10)
+    rtspsink = RtspSink(player)
+    rtspsink.sock = RTSPTransport('127.0.0.1', unused_port)
+    result = rtspsink.negotiate()
     status, msg = rtsp_source.join()
     if not status or not result:
         pytest.fail(msg)
