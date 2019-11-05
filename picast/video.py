@@ -24,7 +24,7 @@ import os
 import re
 import subprocess
 from logging import getLogger
-from typing import Dict
+from typing import Dict, List
 
 from picast.settings import Settings
 
@@ -73,15 +73,14 @@ class RasberryPiVideo:
         logger.debug("tvservice: {}".format(data))
         return data
 
-    def _retrieve_tvservice(self, mode: TvModes) -> Dict[str, str]:
+    def _retrieve_tvservice(self, mode: TvModes) -> List[Dict[str, str]]:
+        status = []  # type: List[Dict[str, str]]
         if mode is self.TvModes.Current:
             data = self._call_tvservice("tvservice -s")
             r = re.compile(r'([0-9]+)x([0-9]+),\s+@\s+([1-9][0-9])\.[0-9][0-9]HZ')
             m = r.match(data)
             if m is not None:
-                status = {'width': m.group(1), 'height': m.group(2), 'rate': m.group(3)}
-            else:
-                status = {}
+                status = [{'width': m.group(1), 'height': m.group(2), 'rate': m.group(3)}]
         elif mode is self.TvModes.CEA:
             data = self._call_tvservice("tvservice -m CEA -j")
             status = json.loads(data)
@@ -94,14 +93,14 @@ class RasberryPiVideo:
         cea = 0x01
         vesa = 0x00
         hh = 0x00
-        cea_resolutions = self._retrieve_tvservice(mode=self.TvModes.CEA)
+        cea_resolutions = self._retrieve_tvservice(mode=self.TvModes.CEA)  # type: List[Dict[str, str]]
         for r in cea_resolutions:
             res_list = self.resolutions['cea']
             for res in res_list:
                 if res['mode'] == r['code']:
                     cea |= 1 << res['id']
                     break
-        dmt_resolutions = self._retrieve_tvservice(mode=self.TvModes.DMT)
+        dmt_resolutions = self._retrieve_tvservice(mode=self.TvModes.DMT)  # type: List[Dict[str, str]]
         for r in dmt_resolutions:
             res_list = self.resolutions['vesa']
             for res in res_list:
