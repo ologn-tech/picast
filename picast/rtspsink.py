@@ -78,10 +78,7 @@ class RTSPTransport:
                 (line, self.buffer) = self.buffer.split(b'\r\n', 1)
                 return line
             else:
-                try:
-                    more = self.sock.recv(1024)
-                except BlockingIOError:
-                    break
+                more = self.sock.recv(1024)
                 if not more:
                     break
                 else:
@@ -222,7 +219,6 @@ class RtspSink(threading.Thread):
                                             url="*", others=[('Require', 'org.wfa.wfd1.0')])
         self.logger.debug("<-{}".format(s_data))
         self.sock.write(s_data.encode('ASCII'))
-        sleep(0.1)
         headers = self.get_rtsp_headers()
         if headers['CSeq'] != '100' or headers['resp'] != "200 OK":
             return False
