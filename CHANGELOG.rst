@@ -37,14 +37,14 @@ Added
 
 * Test for python 3.7 and 3.8
   - Install PyObject through pip.
+  - Add network protocol functional tests.
 * Test typing with mypy.
   - dependency for gst-python-stubs and PyObject-stubs
 
 Changed
 -------
 
-* Use AsyncIO for network communication.(#4)
-* Handle header parameters as str.
+* Introduce RTSPTransport class to handle network connection.
 
 Fixed
 -----
