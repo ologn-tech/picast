@@ -355,18 +355,18 @@ class RtspSink(threading.Thread):
                 if headers['cmd'] == "GET_PARAMETER" and headers['url'] == "rtsp://localhost/wfd1.0":
                     self.read_body(headers)
                     resp_msg = self._rtsp_response_header(seq=headers['CSeq'], res="200 OK")
-                    self.sock.write(resp_msg)
+                    self.sock.write(resp_msg.encode('ASCII'))
                 elif headers['cmd'] == "SET_PARAMETER":
                     body = self.read_body(headers)
                     lines = body.decode('UTF-8').splitlines()
                     if 'wfd_trigger_method: TEARDOWN' in lines:
                         resp_msg = self._rtsp_response_header(seq=headers['CSeq'], res="200 OK")
-                        self.sock.write(resp_msg)
+                        self.sock.write(resp_msg.encode('ASCII'))
 
                         self.logger.debug("Got TEARDOWN request.")
                         m5_msg = self._rtsp_response_header(seq=str(self.csnum), cmd="TEARDOWN",
                                                             url="rtsp://localhost/wfd1.0")
-                        self.sock.write(m5_msg)
+                        self.sock.write(m5_msg.encode('ASCII'))
                         self.teardown = True
                         self.player.stop()
                 elif self.teardown and headers['cmd'] is None and headers['resp'] == "200 OK":
