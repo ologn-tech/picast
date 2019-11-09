@@ -94,10 +94,10 @@ class RTSPTransport:
         return self.sock.sendall(b)
 
 
-class RtspSink(threading.Thread):
+class RTSPSink(threading.Thread):
 
     def __init__(self,  player, logger='picast'):
-        super(RtspSink, self).__init__(name='rtsp-server-0', daemon=True)
+        super(RTSPSink, self).__init__(name='rtsp-server-0', daemon=True)
         self.config = Settings()
         self.logger = getLogger(logger)
         self.player = player
@@ -339,75 +339,72 @@ class RtspSink(threading.Thread):
         self.logger.info("---- Negotiation failed ----")
         return False
 
-    def rtspsrv(self, idrsock) -> None:
+    def is_keep_alive(self, headers):
+        return headers['cmd'] == "GET_PARAMETER" and headers['url'] == "rtsp://localhost/wfd1.0"
+
+    def is_parameter_change(self, headers):
+        return headers['cmd'] == "SET_PARAMETER"
+
+    def keep_alive(self, headers):
+        self.read_body(headers)
+        resp_msg = self._rtsp_response_header(seq=headers['CSeq'], res="200 OK")
+        self.sock.write(resp_msg.encode('ASCII'))
+        return
+
+    def parameter_change(self, headers):
+        body = self.read_body(headers)
+        lines = body.decode('UTF-8').splitlines()
+        if 'wfd_trigger_method: TEARDOWN' in lines:
+            self.logger.debug("Got TEARDOWN request.")
+            self.response_teardown(headers)
+            self.teardown = True
+        return
+
+    def response_teardown(self, headers):
+        resp_msg = self._rtsp_response_header(seq=headers['CSeq'], res="200 OK")
+        self.sock.write(resp_msg.encode('ASCII'))
+        m5_msg = self._rtsp_response_header(seq=str(self.csnum), cmd="TEARDOWN", url="rtsp://localhost/wfd1.0")
+        self.sock.write(m5_msg.encode('ASCII'))
+
+    def is_response(self, headers):
+        return headers['resp'] == "200 OK"
+
+    def play(self) -> None:
+        self.player.start()
         self.teardown = False
         while True:
             try:
                 headers = self.get_rtsp_headers()
             except socket.error as e:
-                self.handle_recv_err(e, idrsock)
-            else:
-                self.watchdog = 0
-                if headers['cmd'] == "GET_PARAMETER" and headers['url'] == "rtsp://localhost/wfd1.0":
-                    self.read_body(headers)
-                    resp_msg = self._rtsp_response_header(seq=headers['CSeq'], res="200 OK")
-                    self.sock.write(resp_msg.encode('ASCII'))
-                elif headers['cmd'] == "SET_PARAMETER":
-                    body = self.read_body(headers)
-                    lines = body.decode('UTF-8').splitlines()
-                    if 'wfd_trigger_method: TEARDOWN' in lines:
-                        resp_msg = self._rtsp_response_header(seq=headers['CSeq'], res="200 OK")
-                        self.sock.write(resp_msg.encode('ASCII'))
-
-                        self.logger.debug("Got TEARDOWN request.")
-                        m5_msg = self._rtsp_response_header(seq=str(self.csnum), cmd="TEARDOWN",
-                                                            url="rtsp://localhost/wfd1.0")
-                        self.sock.write(m5_msg.encode('ASCII'))
-                        self.teardown = True
-                        self.player.stop()
-                elif self.teardown and headers['cmd'] is None and headers['resp'] == "200 OK":
-                    break
-                else:
-                    continue
-
-    def handle_recv_err(self, e, idrsock) -> None:
-        err = e.args[0]
-        if err == errno.EAGAIN or err == errno.EWOULDBLOCK:
-            try:
-                (idrsock.recv(1000))
-            except socket.error as e:
                 err = e.args[0]
                 if err == errno.EAGAIN or err == errno.EWOULDBLOCK:
-                    sleep(0.01)
-                    self.watchdog += 1
-                    if self.watchdog >= 70 / 0.01:
-                        self.player.stop()
-                        sleep(1)
+                    continue
                 else:
-                    self.logger.debug("socket error.")
+                    self.logger.debug("Exit....")
+                    break
             else:
-                self.csnum += 1
-                msg = 'wfd-idr-request\r\n'
-                idrreq = self._rtsp_response_header(seq=str(self.csnum),
-                                                    cmd="SET_PARAMETER", url="rtsp://localhost/wfd1.0",
-                                                    others=[('Content-Length', str(len(msg))),
-                                                            ('Content-Type', 'text/parameters')
-                                                            ])
-                idrreq += msg
-                self.logger.debug("idreq: {}".format(idrreq))
-                self.sock.write(idrreq.encode('ASCII'))
-        else:
-            self.logger.debug("Exit becuase of socket error.")
+                if self.is_keep_alive(headers):
+                    self.keep_alive(headers)
+                elif self.is_parameter_change(headers):
+                    self.parameter_change(headers)
+                    if self.teardown:
+                        self.player.stop()
+                elif self.is_response(headers):
+                    if self.teardown:
+                        break
+                else:
+                    # ignore all other commands now...
+                    continue
 
     def run(self):
-        self.logger.info("Register mDNS/SD entry.")
         sd = ServiceDiscovery()
         sd.register()
-        self.sock = RTSPTransport(self.config.peeraddress, self.config.rtsp_port)
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as idrsock:
-            idrsock_address = ('127.0.0.1', 0)
-            idrsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            idrsock.bind(idrsock_address)
-            if self.negotiate():
-                self.player.start()
-                self.rtspsrv(idrsock)
+        while True:
+            self.sock = RTSPTransport(self.config.peeraddress, self.config.rtsp_port)
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as idrsock:
+                idrsock_address = ('127.0.0.1', 0)
+                idrsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                idrsock.bind(idrsock_address)
+                if self.negotiate():
+                    self.play(idrsock)
+                self.sock.close()

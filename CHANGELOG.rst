@@ -29,6 +29,20 @@ Removed
 Security
 --------
 
+`v0.2.2'_
+=======
+
+Changed
+-------
+
+* Update README to use pypi.org for distribution.
+* Refactoring RTSPSink class
+
+Fixed
+-----
+
+* Fix config loading error.
+
 `v0.2.1'_
 =======
 

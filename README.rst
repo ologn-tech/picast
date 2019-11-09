@@ -34,8 +34,8 @@ picast depends several external utilities and some are only on Raspbian.
 - vlc
 
 
-Installation
-------------
+Installation and run
+--------------------
 
 Run apt install command on Raspbian(buster or later) / Raspberry Pi Zero W/WH, RaPi 3B+, RaPi 4.
 
@@ -47,24 +47,25 @@ Run apt install command on Raspbian(buster or later) / Raspberry Pi Zero W/WH, R
     $ sudo apt install gstreamer1.0-omx-rpi gstreamer1.0-omx-rpi-config vlc
     $ sudo apt install --no-install-recommends lxde
 
-For debug and development;
+.. code-block:: console
+
+    $ python3 -m pip install picast
+    $ picast
+
+
+Development
+-----------
 
 .. code-block:: console
 
     $ sudo apt install gstreamer1.0-tools
-
-.. code-block:: console
-
     $ git clone https://github.com/miurahr/picast.git picast
-
-
-Run
----
-
-.. code-block:: console
-
     $ cd picast
-    $ bin/picast
+    $ python3 -m venv venv
+    $ source venv/bin/activate
+    $ pip install -U pip
+    $ pip install -r requirements.txt
+    $ picast --debug
 
 
 Preparation

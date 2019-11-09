@@ -10,6 +10,10 @@ import pytest
 def test_logging_config():
     LoggingConfig.fileConfig(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'picast', 'logging.ini'))
 
+@pytest.mark.unit
+def test_config_init_config():
+    config = Settings(config=os.path.join(os.path.dirname(os.path.dirname(__file__)), 'picast', 'settings.ini'))
+    assert config.inifile == os.path.join(os.path.dirname(os.path.dirname(__file__)), 'picast', 'settings.ini')
 
 @pytest.mark.unit
 def test_config_logger():

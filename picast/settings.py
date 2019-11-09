@@ -31,29 +31,25 @@ class PlatformType(enum.Enum):
     Generic = 999
 
 
-class Settings():
+class Settings(object):
     # this class is Borg/Singleton
     _shared_state = {
         '_config': None,
         '_lock': threading.Lock()
     }
 
-    def __new__(cls, *p, **k):
-        self = object.__new__(cls, *p, **k)
-        self.__dict__ = cls._shared_state
-        return self
-
     def __init__(self, config=None):
+        self.__dict__ = self._shared_state
         if self._config is None:
             with self._lock:
                 if self._config is None:
                     if config is None:
                         inidir = os.path.dirname(__file__)
-                        inifile = os.path.join(inidir, 'settings.ini')
+                        self.inifile = os.path.join(inidir, 'settings.ini')
                     else:
                         inidir = os.path.dirname(config)
-                        inifile = config
-                    self._config = self.configParse(inifile)
+                        self.inifile = config
+                    self._config = self.configParse(self.inifile)
                     self._platform = self._detect_platform()
 
     def configParse(self, file_path):

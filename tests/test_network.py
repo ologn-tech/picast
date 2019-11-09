@@ -3,7 +3,7 @@ import threading
 
 import pytest
 
-from picast.rtspsink import RtspSink, RTSPTransport
+from picast.rtspsink import RTSPSink, RTSPTransport
 from picast.video import RasberryPiVideo
 
 
@@ -147,7 +147,7 @@ def test_read_headers(monkeypatch, unused_port):
     server = MockServer(unused_port, target="readline")
     server.start()
     player = None
-    rtspsink = RtspSink(player)
+    rtspsink = RTSPSink(player)
     rtspsink.sock = RTSPTransport('127.0.0.1', unused_port)
     headers = rtspsink.read_headers()
     assert headers == ['OPTIONS * RTSP/1.0', 'CSeq: 0', 'Require: org.wfa.wfd1.0']
@@ -166,7 +166,7 @@ def test_get_rtsp_headers(monkeypatch, unused_port):
     server = MockServer(unused_port, target="readline")
     server.start()
     player = None
-    rtspsink = RtspSink(player)
+    rtspsink = RTSPSink(player)
     rtspsink.sock = RTSPTransport('127.0.0.1', unused_port)
     headers = rtspsink.get_rtsp_headers()
     assert headers == {'CSeq': '0', 'Require': 'org.wfa.wfd1.0', 'cmd': 'OPTIONS', 'resp': None, 'url': '*'}
@@ -184,7 +184,7 @@ def test_rtsp_m1(monkeypatch, unused_port):
     server = MockServer(unused_port, target="m1")
     server.start()
     player = None
-    rtspsink = RtspSink(player)
+    rtspsink = RTSPSink(player)
     rtspsink.sock = RTSPTransport('127.0.0.1', unused_port)
     rtspsink.rtsp_m1()
     result, msg = server.join()
@@ -203,7 +203,7 @@ def test_rtsp_m2(monkeypatch, unused_port):
     server = MockServer(unused_port, target="m2")
     server.start()
     player = None
-    rtspsink = RtspSink(player)
+    rtspsink = RTSPSink(player)
     rtspsink.sock = RTSPTransport('127.0.0.1', unused_port)
     rtspsink.rtsp_m2()
     result, msg = server.join()
@@ -222,7 +222,7 @@ def test_rtsp_m3(monkeypatch, unused_port):
     server = MockServer(unused_port, target="m3")
     server.start()
     player = None
-    rtspsink = RtspSink(player)
+    rtspsink = RTSPSink(player)
     rtspsink.sock = RTSPTransport('127.0.0.1', unused_port)
     rtspsink.rtsp_m3()
     result, msg = server.join()
@@ -241,7 +241,7 @@ def test_rtsp_m4(monkeypatch, unused_port):
     server = MockServer(unused_port, target="m4")
     server.start()
     player = None
-    rtspsink = RtspSink(player)
+    rtspsink = RTSPSink(player)
     rtspsink.sock = RTSPTransport('127.0.0.1', unused_port)
     rtspsink.rtsp_m4()
     result, msg = server.join()
@@ -260,7 +260,7 @@ def test_rtsp_m5(monkeypatch, unused_port):
     server = MockServer(unused_port, target="m5")
     server.start()
     player = None
-    rtspsink = RtspSink(player)
+    rtspsink = RTSPSink(player)
     rtspsink.sock = RTSPTransport('127.0.0.1', unused_port)
     rtspsink.rtsp_m5()
     result, msg = server.join()
@@ -279,7 +279,7 @@ def test_rtsp_m6(monkeypatch, unused_port):
     server = MockServer(unused_port, target="m6")
     server.start()
     player = None
-    rtspsink = RtspSink(player)
+    rtspsink = RTSPSink(player)
     rtspsink.sock = RTSPTransport('127.0.0.1', unused_port)
     rtspsink.csnum = 100
     sessionid, serverport = rtspsink.rtsp_m6()
@@ -301,7 +301,7 @@ def test_rtsp_m7(monkeypatch, unused_port):
     server = MockServer(unused_port, target="m7")
     server.start()
     player = None
-    rtspsink = RtspSink(player)
+    rtspsink = RTSPSink(player)
     rtspsink.sock = RTSPTransport('127.0.0.1', unused_port)
     rtspsink.csnum = 101
     sessionid = '7C9C5678'

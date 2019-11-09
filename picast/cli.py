@@ -32,7 +32,7 @@ gi.require_version('Gtk', '3.0')  # noqa: E402 # isort:skip
 gi.require_version('GstVideo', '1.0')  # noqa: E402 # isort:skip
 gi.require_version('GdkX11', '3.0')  # noqa: E402 # isort:skip
 
-from picast.rtspsink import RtspSink  # noqa: E402 # isort:skip
+from picast.rtspsink import RTSPSink  # noqa: E402 # isort:skip
 from picast.player import GstPlayer, VlcPlayer  # noqa: E402 # isort:skip
 from picast.settings import Settings  # noqa: E402 # isort:skip
 from picast.wifip2p import WifiP2PServer  # noqa: E402 # isort:skip
@@ -92,7 +92,7 @@ class Cli:
         # ------------------- end of configurations
 
         wifip2p = WifiP2PServer()
-        rtspsink = RtspSink(player)
+        rtspsink = RTSPSink(player)
 
         wifip2p.start()
         rtspsink.start()
