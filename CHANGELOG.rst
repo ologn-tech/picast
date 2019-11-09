@@ -29,6 +29,21 @@ Removed
 Security
 --------
 
+
+`v0.2.3'_
+=======
+
+Changed
+-------
+
+* Change class name RtspSink to RTSPSink
+
+Fixed
+-----
+
+* Watching socket timeout and break connection.
+
+
 `v0.2.2'_
 =======
 
@@ -99,7 +114,9 @@ Fixed
 * Forked from lazycast.
 
 
-.. _Unreleased: https://github.com/miurahr/picast/compare/v0.2.1...HEAD
+.. _Unreleased: https://github.com/miurahr/picast/compare/v0.2.3...HEAD
+.. _v0.2.3: https://github.com/miurahr/picast/releases/tag/v0.2.2...v0.2.3
+.. _v0.2.2: https://github.com/miurahr/picast/releases/tag/v0.2.1...v0.2.2
 .. _v0.2.1: https://github.com/miurahr/picast/releases/tag/v0.2...v0.2.1
 .. _v0.2: https://github.com/miurahr/picast/releases/tag/v0.1...v0.2
 .. _v0.1: https://github.com/miurahr/picast/releases/tag/v0.0.1...v0.1
