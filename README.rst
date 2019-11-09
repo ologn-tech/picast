@@ -5,6 +5,9 @@ A Simple Wireless Display Receiver on Raspberry Pi
     :target: https://travis-ci.org/miurahr/picast
     :alt: Travis test status
 
+.. image:: https://badge.fury.io/py/picast.svg
+    :target: https://badge.fury.io/py/picast
+
 .. image:: https://readthedocs.org/projects/picast/badge/?version=latest
     :target: https://picast.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation status
