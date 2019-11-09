@@ -22,7 +22,7 @@ import argparse
 import os
 from logging import config as LoggingConfig
 from logging import getLogger
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import gi
 
@@ -82,7 +82,7 @@ class Cli:
             logger.setLevel("DEBUG")
 
         if config.player == "gst":
-            player = GstPlayer()
+            player = GstPlayer()  # type: Optional[Union[GstPlayer, VlcPlayer]]
         elif config.player == "vlc":
             player = VlcPlayer()
         else:
