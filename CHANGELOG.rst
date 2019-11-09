@@ -14,20 +14,11 @@ Current changes
 Added
 -----
 
-* Introduce [p2p] wps_mode= in settings.ini.
-  can be 'pbc' ie. Push the Button, or 'pin'
-
-* Add documentation for settings.
-
 Changed
 -------
 
-* Add p2p_connect() and start_wps_pbc() methods.
-
 Fixed
 -----
-
-* main() drop unused asyncio staff.
 
 Deprecated
 ----------
@@ -37,6 +28,28 @@ Removed
 
 Security
 --------
+
+`v0.2.1'_
+=======
+
+Added
+-----
+
+* Introduce [p2p] wps_mode= in settings.ini.
+  can be 'pbc' ie. Push the Button, or 'pin'
+
+* Add documentation for settings.
+
+Changed
+-------
+
+* Add p2p_connect() and start_wps_pbc() methods.
+* Improve CLI staff.
+
+Fixed
+-----
+
+* main() drop unused asyncio staff.
 
 `v0.2'_
 =======
@@ -66,6 +79,14 @@ Fixed
 
 * First working release.
 
-.. _Unreleased: https://github.com/miurahr/picast/compare/v0.1...HEAD
+`v0.0.1`_
+=========
+
+* Forked from lazycast.
+
+
+.. _Unreleased: https://github.com/miurahr/picast/compare/v0.2.1...HEAD
+.. _v0.2.1: https://github.com/miurahr/picast/releases/tag/v0.2...v0.2.1
 .. _v0.2: https://github.com/miurahr/picast/releases/tag/v0.1...v0.2
 .. _v0.1: https://github.com/miurahr/picast/releases/tag/v0.0.1...v0.1
+.. _v0.0.1: https://github.com/miurahr/picast/releases/tag/lazycast...v0.0.1
