@@ -77,15 +77,15 @@ Usage
 Picast search for the wireless display named "picast" on the source device you want to cast.
 Use "12345678" for a WPS PIN number.
 It is recommended to initiate the termination of the receiver on the source side.
+After Pi connects to the source, it has an IP address of ``192.168.173.80``.
 
-After Pi connects to the source, it has an IP address of ``192.168.173.80``
 These parameters are configured in `settings.ini`.
 
 
 Autostart
 ---------
 
-Edit /home/pi/.config/lxsessions/LXDE/autostart
+Edit `/home/pi/.config/lxsessions/LXDE/autostart`
 
 .. code-block:: bash
 
@@ -96,18 +96,17 @@ Edit /home/pi/.config/lxsessions/LXDE/autostart
 Debug
 -----
 
-There is a debug log at /var/tmp/picast.log. It is configured in `logging.ini`.
+There is a debug log at `/var/tmp/picast.log`. It is configured in `logging.ini`.
 
 
 Known issues
 ------------
 
-* Resolution: picast advertised some fixed resolutions rather than connected display resolution.
-
-* Latency: Limited by the implementation of the rtp player, omxplayer, used.
+* Latency: Limited by the implementation of the RTP player used.
 
 * WiFi: The on-board WiFi chip on Pi 3/Zero W only supports 2.4GHz. Due to the overcrowded nature of the 2.4GHz
   spectrum and the use of unreliable rtp transmission, you may experience some video glitching/audio stuttering.
+  It may be better with Pi 3B+/4 that support IEEE802.11ac 5GHz.
 
 * HDCP(content protection): Neither the key nor the hardware is available on Pi and therefore is not supported.
 
