@@ -85,6 +85,16 @@ class WpaCli:
         status = self.cmd("-i", interface, "wps_pin", "any", "{0:s}".format(pin), "{0:d}".format(timeout))
         return status
 
+    def start_wps_pbc(self, interface: str):
+        self.logger.debug("wpa_cli -i {0:s} wps_pbc".format(interface))
+        status = self.cmd("-i", interface, "wps_pbc")
+        return status
+
+    def p2p_connect(self, interface: str, pin: str, peer: str):
+        self.logger.debug("wpa_cli -i {0:s} p2p_connect {1:s} {2:s}".format(interface, peer, pin))
+        status = self.cmd("-i", interface, "p2p_connect", "{0:s}".format(peer), "{0:s}".format(pin))
+        return status
+
     def get_interfaces(self) -> Tuple[Optional[str], List[str]]:
         selected = None
         interfaces = []
