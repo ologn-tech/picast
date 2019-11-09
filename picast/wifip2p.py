@@ -43,7 +43,10 @@ class WifiP2PServer(threading.Thread):
 
     def start_wps(self):
         wpacli = WpaCli()
-        wpacli.set_wps_pin(self.wlandev, self.config.pin, self.config.timeout)
+        if self.config.wps_mode == "pbc":
+            wpacli.start_wps_pbc(self.wlandev)
+        else:
+            wpacli.set_wps_pin(self.wlandev, self.config.pin, self.config.timeout)
 
     def start_dhcpd(self):
         dhcpd = Dhcpd(self.wlandev)

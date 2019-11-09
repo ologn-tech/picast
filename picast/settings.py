@@ -98,6 +98,10 @@ class Settings():
         return self._config.get('network', 'netmask')
 
     @property
+    def wps_mode(self):
+        return self._config.get('p2p', 'wps_mode')
+
+    @property
     def pin(self):
         return self._config.get('p2p', 'pin')
 
