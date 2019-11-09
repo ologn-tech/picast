@@ -124,3 +124,7 @@ class Settings(object):
     @property
     def gst_decoder(self):
         return self._config.get('gst', 'decoder')
+
+    @property
+    def max_timeout(self):
+        return self._config.get('network', 'max_timeout')

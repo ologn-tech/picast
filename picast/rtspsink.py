@@ -18,6 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import errno
 import re
 import socket
 import threading
@@ -51,6 +52,9 @@ class RTSPTransport:
                 break
         sock.settimeout(1)
         self.sock = sock
+
+    def settimeout(self, value):
+        return self.sock.settimeout(value)
 
     def close(self):
         self.sock.close()
@@ -371,13 +375,26 @@ class RtspSink(threading.Thread):
     def play(self) -> None:
         self.player.start()
         self.teardown = False
+        self.watchdog = 0
+        self.sock.settimeout(10)
+
         while True:
             try:
                 headers = self.get_rtsp_headers()
-            except socket.error:
-                # source will be disconnected
-                break
+            except socket.error as e:
+                err = e.args[0]
+                if err == errno.EAGAIN or err == errno.EWOULDBLOCK or err == errno.EALREADY or err == errno.EINPROGRESS:
+                    sleep(0.1)
+                    continue
+                elif err == errno.ETIMEDOUT:
+                    self.watchdog += 1
+                    if self.watchdog > self.config.max_timeout:
+                        break
+                else:
+                    self.logger.debug("Got unexpected socket error {}".format(e.args[0]))
+                    break
             else:
+                self.watchdog = 0
                 if self.is_keep_alive(headers):
                     self.keep_alive(headers)
                 elif self.is_parameter_change(headers):
@@ -399,3 +416,4 @@ class RtspSink(threading.Thread):
             if self.negotiate():
                 self.play()
             self.sock.close()
+            sleep(1)
