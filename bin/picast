@@ -8,8 +8,8 @@ root_path = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 if os.path.exists(os.path.join(root_path, "picast")):
     sys.path.append(root_path)
 
-from picast import main  # noqa: E402 # isort:skip
+import picast.cli # noqa: E402 # isort:skip
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    sys.exit(picast.cli.Cli().run())

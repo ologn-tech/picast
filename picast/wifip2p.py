@@ -40,6 +40,7 @@ class WifiP2PServer(threading.Thread):
     def run(self):
         self.start_dhcpd()
         self.start_wps()
+        sleep(3)
 
     def start_wps(self):
         wpacli = WpaCli()
