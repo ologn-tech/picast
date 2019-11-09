@@ -5,7 +5,7 @@ from time import sleep
 
 import pytest
 
-from picast.rtspsink import RTSPSink, RTSPTransport
+from picast.rtspsink import RtspSink, RTSPTransport
 from picast.video import RasberryPiVideo
 
 
@@ -165,7 +165,7 @@ async def test_rtsp_negotiation(monkeypatch, unused_port):
     rtsp_source.start()
     sleep(0.5)
     player = MockPlayer()
-    rtspsink = RTSPSink(player)
+    rtspsink = RtspSink(player)
     rtspsink.sock = RTSPTransport('127.0.0.1', unused_port)
     result = rtspsink.negotiate()
     status, msg = rtsp_source.join()

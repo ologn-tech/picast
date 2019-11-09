@@ -18,7 +18,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import errno
 import re
 import socket
 import threading
@@ -94,10 +93,10 @@ class RTSPTransport:
         return self.sock.sendall(b)
 
 
-class RTSPSink(threading.Thread):
+class RtspSink(threading.Thread):
 
     def __init__(self,  player, logger='picast'):
-        super(RTSPSink, self).__init__(name='rtsp-server-0', daemon=True)
+        super(RtspSink, self).__init__(name='rtsp-server-0', daemon=True)
         self.config = Settings()
         self.logger = getLogger(logger)
         self.player = player
@@ -375,13 +374,9 @@ class RTSPSink(threading.Thread):
         while True:
             try:
                 headers = self.get_rtsp_headers()
-            except socket.error as e:
-                err = e.args[0]
-                if err == errno.EAGAIN or err == errno.EWOULDBLOCK:
-                    continue
-                else:
-                    self.logger.debug("Exit....")
-                    break
+            except socket.error:
+                # source will be disconnected
+                break
             else:
                 if self.is_keep_alive(headers):
                     self.keep_alive(headers)
@@ -401,10 +396,6 @@ class RTSPSink(threading.Thread):
         sd.register()
         while True:
             self.sock = RTSPTransport(self.config.peeraddress, self.config.rtsp_port)
-            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as idrsock:
-                idrsock_address = ('127.0.0.1', 0)
-                idrsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                idrsock.bind(idrsock_address)
-                if self.negotiate():
-                    self.play(idrsock)
-                self.sock.close()
+            if self.negotiate():
+                self.play()
+            self.sock.close()
