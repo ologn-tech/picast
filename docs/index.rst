@@ -12,7 +12,8 @@ Welcome to picast's documentation!
 
    introduction
    design
-   AUTHORS
+   settings
+   authors
    changes
 
 
