@@ -18,7 +18,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import asyncio
 import os
 import sys
 from logging import config as LoggingConfig
@@ -53,14 +52,9 @@ def main():
     else:
         player = VlcPlayer()
 
-    rtspserver = RtspSink(player)
-    # for python3.7 or later
-    # asyncio.run(rtspserver.run())
-    #
-    # for python3.6
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(rtspserver.run())
-    loop.close()
+    rtspsink = RtspSink(player)
+    rtspsink.start()
+    rtspsink.join()
 
     return 0
 

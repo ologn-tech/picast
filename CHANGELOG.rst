@@ -14,11 +14,20 @@ Current changes
 Added
 -----
 
+* Introduce [p2p] wps_mode= in settings.ini.
+  can be 'pbc' ie. Push the Button, or 'pin'
+
+* Add documentation for settings.
+
 Changed
 -------
 
+* Add p2p_connect() and start_wps_pbc() methods.
+
 Fixed
 -----
+
+* main() drop unused asyncio staff.
 
 Deprecated
 ----------
