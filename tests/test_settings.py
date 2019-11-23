@@ -52,7 +52,7 @@ def test_config_device_name():
 
 @pytest.mark.unit
 def test_config_device_type():
-    assert Settings().device_type == '7-0050F204-1'
+    assert Settings().device_type == '7-0050F204-4'
 
 
 @pytest.mark.unit
