@@ -29,9 +29,18 @@ Removed
 Security
 --------
 
+`v0.2.4'_
+=========
+
+Added
+-----
+
+* Comments for parameter configs.
+* Parameters Microsoft V2 extensions.
+
 
 `v0.2.3'_
-=======
+=========
 
 Changed
 -------
@@ -45,7 +54,7 @@ Fixed
 
 
 `v0.2.2'_
-=======
+=========
 
 Changed
 -------
@@ -59,7 +68,7 @@ Fixed
 * Fix config loading error.
 
 `v0.2.1'_
-=======
+=========
 
 Added
 -----
@@ -114,7 +123,8 @@ Fixed
 * Forked from lazycast.
 
 
-.. _Unreleased: https://github.com/miurahr/picast/compare/v0.2.3...HEAD
+.. _Unreleased: https://github.com/miurahr/picast/compare/v0.2.4...HEAD
+.. _v0.2.4: https://github.com/miurahr/picast/releases/tag/v0.2.3...v0.2.4
 .. _v0.2.3: https://github.com/miurahr/picast/releases/tag/v0.2.2...v0.2.3
 .. _v0.2.2: https://github.com/miurahr/picast/releases/tag/v0.2.1...v0.2.2
 .. _v0.2.1: https://github.com/miurahr/picast/releases/tag/v0.2...v0.2.1
