@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+
+[tool.pyflow]
+py_version = "3.7"
+
+[tool.pyflow.dependencies]
+zeroconf = "^0.24.2"
+
+[tool.pyflow.dev-dependencies]
+pytest = "^5.2"
+pytest-asyncio = "^0.10.0"
+pytest-cov = "^2.8.1"
+coverage = "^4.5.4"
+coveralls = "^1.8.2"
+pyannotate = "^1.2.0"
+
+
