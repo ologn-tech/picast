@@ -25,22 +25,21 @@ Removed
 Security
 --------
 
-`v0.3b1`_
-=========
+`v0.3`_
+=======
 
 Changed
 -------
 
-* Use setuptools_scm for versioning
+* Release artifacts with github actions.
+* Use setuptools_scm to automate version.
 * Packaging metadata in setup.cfg
 * Auto generate binary by build backend.
-
 
 Fixed
 -----
 
 * Several document errors.
-
 
 `v0.2.4`_
 =========
@@ -136,8 +135,8 @@ Fixed
 * Forked from lazycast.
 
 
-.. _Unreleased: https://github.com/miurahr/picast/compare/v0.3b1...HEAD
-.. _v0.3b1: https://github.com/miurahr/picast/compare/v0.2.4...v0.3b1
+.. _Unreleased: https://github.com/miurahr/picast/compare/v0.3...HEAD
+.. _v0.3: https://github.com/miurahr/picast/compare/v0.2.4...v0.3
 .. _v0.2.4: https://github.com/miurahr/picast/compare/v0.2.3...v0.2.4
 .. _v0.2.3: https://github.com/miurahr/picast/compare/v0.2.1...v0.2.3
 .. _v0.2.1: https://github.com/miurahr/picast/compare/v0.2...v0.2.1
