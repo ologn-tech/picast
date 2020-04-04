@@ -1,5 +1,5 @@
 # It should be installed as debian/ubuntu package in normal situation.
-# PyGObject  # python3-gi
+PyGObject  # python3-gi
 # N.A.       # python3-gst-1.0
 zeroconf
 coverage
