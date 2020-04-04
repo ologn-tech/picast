@@ -1,5 +1,9 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=42", "wheel", "setuptools_scm[toml]>=3.5.0", "klepto"]
+build-backend = "setuptools.build_meta"
+
+[tools.setuptools_scm]
+local_scheme = "no-local-version"
 
 [tool.pyflow]
 py_version = "3.7"
@@ -13,5 +17,3 @@ pytest-asyncio = "^0.10.0"
 pytest-cov = "^2.8.1"
 coverage = "^4.5.4"
 pyannotate = "^1.2.0"
-
-

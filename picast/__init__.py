@@ -18,9 +18,3 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-__copyright__ = 'Copyright (C) 2019 Hiroshi Miura'
-__version__ = '0.2.3'
-__license__ = 'GPL3'
-__author__ = 'Hiroshi Miura'
-__author_email__ = 'miurahr@linux.com'
-__url__ = 'http://github.com/miurahr/picast'
