@@ -4,10 +4,6 @@ changeLog
 
 All notable changes to this project will be documented in this file.
 
-***************
-Current changes
-***************
-
 `Unreleased`_
 =============
 
@@ -29,7 +25,24 @@ Removed
 Security
 --------
 
-`v0.2.4'_
+`v0.3b1`_
+=========
+
+Changed
+-------
+
+* Use setuptools_scm for versioning
+* Packaging metadata in setup.cfg
+* Auto generate binary by build backend.
+
+
+Fixed
+-----
+
+* Several document errors.
+
+
+`v0.2.4`_
 =========
 
 Added
@@ -39,7 +52,7 @@ Added
 * Parameters Microsoft V2 extensions.
 
 
-`v0.2.3'_
+`v0.2.3`_
 =========
 
 Changed
@@ -53,8 +66,8 @@ Fixed
 * Watching socket timeout and break connection.
 
 
-`v0.2.2'_
-=========
+v0.2.2
+======
 
 Changed
 -------
@@ -67,7 +80,7 @@ Fixed
 
 * Fix config loading error.
 
-`v0.2.1'_
+`v0.2.1`_
 =========
 
 Added
@@ -89,7 +102,7 @@ Fixed
 
 * main() drop unused asyncio staff.
 
-`v0.2'_
+`v0.2`_
 =======
 
 Added
@@ -112,7 +125,7 @@ Fixed
 * Bug: fails to recieve M4 message because M3 reciever can read both M3 and M4.
 
 
-`v0.1'_
+`v0.1`_
 =======
 
 * First working release.
@@ -123,11 +136,11 @@ Fixed
 * Forked from lazycast.
 
 
-.. _Unreleased: https://github.com/miurahr/picast/compare/v0.2.4...HEAD
-.. _v0.2.4: https://github.com/miurahr/picast/releases/tag/v0.2.3...v0.2.4
-.. _v0.2.3: https://github.com/miurahr/picast/releases/tag/v0.2.2...v0.2.3
-.. _v0.2.2: https://github.com/miurahr/picast/releases/tag/v0.2.1...v0.2.2
-.. _v0.2.1: https://github.com/miurahr/picast/releases/tag/v0.2...v0.2.1
-.. _v0.2: https://github.com/miurahr/picast/releases/tag/v0.1...v0.2
-.. _v0.1: https://github.com/miurahr/picast/releases/tag/v0.0.1...v0.1
-.. _v0.0.1: https://github.com/miurahr/picast/releases/tag/lazycast...v0.0.1
+.. _Unreleased: https://github.com/miurahr/picast/compare/v0.3b1...HEAD
+.. _v0.3b1: https://github.com/miurahr/picast/compare/v0.2.4...v0.3b1
+.. _v0.2.4: https://github.com/miurahr/picast/compare/v0.2.3...v0.2.4
+.. _v0.2.3: https://github.com/miurahr/picast/compare/v0.2.1...v0.2.3
+.. _v0.2.1: https://github.com/miurahr/picast/compare/v0.2...v0.2.1
+.. _v0.2: https://github.com/miurahr/picast/compare/v0.1...v0.2
+.. _v0.1: https://github.com/miurahr/picast/compare/v0.0.1...v0.1
+.. _v0.0.1: https://github.com/miurahr/picast/compare/lazycast...v0.0.1

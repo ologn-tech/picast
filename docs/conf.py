@@ -107,6 +107,9 @@ html_sidebars = {
     ]
 }
 
+linkcheck_ignore = [
+    'https://github.com/miurahr/picast/compare/v.*'
+]
 
 # -- Options for HTMLHelp output ------------------------------------------
 
