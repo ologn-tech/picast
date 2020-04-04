@@ -23,5 +23,7 @@ jobs:
           pip install tox tox-gh-actions coveralls
       - name: Test project with tox
         run: tox
-      - name: Send test statistics
-        run: coveralls
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
