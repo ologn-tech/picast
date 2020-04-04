@@ -11,7 +11,7 @@ jobs:
       - name: Setup python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.7
+          python-version: 3.6
           architecture: x64
       - name: Install dependencies
         run: |
@@ -20,10 +20,6 @@ jobs:
           sudo apt-get install -qq gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly
           sudo apt-get install -qq gcc libgirepository1.0-dev libgtk-3-dev pkg-config
           pip install -U pip
-          pip install tox tox-gh-actions coveralls
+          pip install tox tox-gh-actions
       - name: Test project with tox
         run: tox
-      - name: Coveralls
-        uses: coverallsapp/github-action@master
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
