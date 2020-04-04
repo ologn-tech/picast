@@ -17,12 +17,12 @@ before_install:
   - sudo apt-get install -qq gcc libgirepository1.0-dev libgtk-3-dev pkg-config
 
 install:
-  - pip install tox-travis coveralls
+  - pip install tox-travis coveralls pep517
 
 script: tox
 
 after_success:
-  - python setup.py sdist bdist_wheel
+  - python -m pep517.build .
   - coveralls
 
 deploy:
