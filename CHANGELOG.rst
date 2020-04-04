@@ -25,6 +25,15 @@ Removed
 Security
 --------
 
+`v0.3.1`_
+=========
+
+Fixed
+-----
+
+* Fix settings.ini not found error on distribution.
+
+
 `v0.3`_
 =======
 
@@ -135,7 +144,8 @@ Fixed
 * Forked from lazycast.
 
 
-.. _Unreleased: https://github.com/miurahr/picast/compare/v0.3...HEAD
+.. _Unreleased: https://github.com/miurahr/picast/compare/v0.3.1...HEAD
+.. _v0.3.1: https://github.com/miurahr/picast/compare/v0.3...v0.3.1
 .. _v0.3: https://github.com/miurahr/picast/compare/v0.2.4...v0.3
 .. _v0.2.4: https://github.com/miurahr/picast/compare/v0.2.3...v0.2.4
 .. _v0.2.3: https://github.com/miurahr/picast/compare/v0.2.1...v0.2.3
