@@ -1,18 +1,15 @@
-include *.gif
-include *.py
 include *.rst
+include *.toml
 include *.txt
-include *.svg
-include *.pgm
-include AUTHORS
 include LICENSE
 include mypy.ini
+include setup.py
 include tox.ini
 recursive-include docs *.py
 recursive-include docs *.rst
 recursive-include docs *.txt
 recursive-include docs Makefile
-recursive-include picast *.ini
-recursive-include picast *.json
+recursive-include src *.ini
+recursive-include src *.json
 recursive-include tests *.py
 recursive-include gi-stubs *.pyi
