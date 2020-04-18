@@ -18,6 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import socket
 from logging import getLogger
 
 import zeroconf
@@ -34,7 +35,7 @@ class ServiceDiscovery():
 
     def register(self):
         service_info = zeroconf.ServiceInfo('_display._tcp.local.', 'PiCast Remote Display._display._tcp.local.',
-                                            addresses=[self.config.myaddress.encode('ascii')], port=self.config.rtsp_port)
+                                            addresses=[socket.inet_aton(self.config.myaddress)], port=self.config.rtsp_port)
         self.zc.register_service(service_info, ttl=60, allow_name_change=False)
         self.logger.info("Register mDNS/SD entry.")
 
