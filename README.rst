@@ -41,7 +41,7 @@ Run apt install command on Raspbian(buster or later) / Raspberry Pi Zero W/WH, R
 
 .. code-block:: console
 
-    $ sudo apt install net-tools python3 udhcpd python-gst-1.0 libgtk-3-dev python3-gi gir1.2-gtk-3.0
+    $ sudo apt install net-tools python3 udhcpd python-gst-1.0 libgtk-3-dev python3-gi python3-pip gir1.2-gtk-3.0
     $ sudo apt install gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0
     $ sudo apt install gstreamer1.0-plugins-good gstreamer1.0-gtk3 gstreamer1.0-plugins-rtp
     $ sudo apt install gstreamer1.0-omx-rpi gstreamer1.0-omx-rpi-config vlc
