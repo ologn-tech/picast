@@ -23,7 +23,7 @@ import subprocess
 from logging import getLogger
 from typing import List, Optional, Tuple
 
-from picast.exceptions import WpaException
+from .exceptions import WpaException
 
 
 class WpaCli:

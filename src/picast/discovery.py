@@ -22,7 +22,7 @@ import socket
 from logging import getLogger
 
 import zeroconf
-from picast.settings import Settings
+from .settings import Settings
 
 
 class ServiceDiscovery():

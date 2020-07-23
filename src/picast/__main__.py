@@ -32,10 +32,10 @@ gi.require_version('Gtk', '3.0')  # noqa: E402 # isort:skip
 gi.require_version('GstVideo', '1.0')  # noqa: E402 # isort:skip
 gi.require_version('GdkX11', '3.0')  # noqa: E402 # isort:skip
 
-from picast.rtspsink import RtspSink  # noqa: E402 # isort:skip
-from picast.player import GstPlayer, VlcPlayer  # noqa: E402 # isort:skip
-from picast.settings import Settings  # noqa: E402 # isort:skip
-from picast.wifip2p import WifiP2PServer  # noqa: E402 # isort:skip
+from .rtspsink import RtspSink  # noqa: E402 # isort:skip
+from .player import GstPlayer, VlcPlayer  # noqa: E402 # isort:skip
+from .settings import Settings  # noqa: E402 # isort:skip
+from .wifip2p import WifiP2PServer  # noqa: E402 # isort:skip
 
 
 def main(arg: Optional[Any] = None):

@@ -23,7 +23,7 @@ import subprocess
 import tempfile
 from logging import getLogger
 
-from picast.settings import Settings
+from .settings import Settings
 
 
 class Dhcpd():

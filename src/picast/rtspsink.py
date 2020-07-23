@@ -26,9 +26,9 @@ from logging import getLogger
 from time import sleep
 from typing import Dict, List, Optional, Tuple
 
-from picast.discovery import ServiceDiscovery
-from picast.settings import Settings
-from picast.video import RasberryPiVideo
+from .discovery import ServiceDiscovery
+from .settings import Settings
+from .video import RasberryPiVideo
 
 
 class RTSPTransport:

@@ -26,7 +26,7 @@ import subprocess
 from logging import getLogger
 from typing import Dict, List
 
-from picast.settings import Settings
+from .settings import Settings
 
 
 class GenericVideo:

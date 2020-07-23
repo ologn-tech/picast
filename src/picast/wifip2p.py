@@ -23,10 +23,10 @@ import threading
 from logging import getLogger
 from time import sleep
 
-from picast.dhcpd import Dhcpd
-from picast.exceptions import WpaException
-from picast.settings import Settings
-from picast.wpacli import WpaCli
+from .dhcpd import Dhcpd
+from .exceptions import WpaException
+from .settings import Settings
+from .wpacli import WpaCli
 
 
 class WifiP2PServer(threading.Thread):
