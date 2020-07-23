@@ -1,4 +1,5 @@
 *.pyc
+.eggs
 .venv
 venv
 build
@@ -12,6 +13,6 @@ __pypackages__
 .coverage
 *.egg-info
 .tox
-/docs/_build
+docs/_build
 type_info.json
 .mypy_cache
