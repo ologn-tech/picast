@@ -53,6 +53,19 @@ Run apt install command on Raspbian(buster or later) / Raspberry Pi Zero W/WH, R
     $ picast
 
 
+Customize
+---------
+
+When you want customize for your environment, please copy `picast/settings.ini` to your favorit
+place and edit it.
+
+then launch picast such as follows:
+
+.. code-block:: console
+
+    $ picast --config /home/pi/settings.ini
+
+
 Development
 -----------
 
