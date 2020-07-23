@@ -20,6 +20,7 @@ Description
 -----------
 
 picast is a simple wifi display receiver written by Python3 on Raspberry Pi.
+Current status is early alpha. Bug reports and contributions are welcome.
 
 
 Dependency
@@ -69,6 +70,8 @@ then launch picast such as follows:
 Development
 -----------
 
+It is recommended to use virtualenv to deploy development environment.
+
 .. code-block:: console
 
     $ sudo apt install gstreamer1.0-tools
@@ -76,9 +79,35 @@ Development
     $ cd picast
     $ python3 -m venv venv
     $ source venv/bin/activate
-    $ pip install -U pip
-    $ pip install -r requirements.txt
+
+
+And then install picast as an editable development environment.
+
+.. code-block:: console
+
+    $ pip install -e .
+
+
+Then you can launch in increased debug level.
+
+
+.. code-block:: console
+
     $ picast --debug
+
+
+Debug log
+---------
+
+There is a debug log at `/var/tmp/picast.log`. It is configured in `logging.ini`.
+
+
+IDE
+---
+
+It is recommended to use PyCharm professional edition, which has a remote deploy
+and debug feature.
+
 
 
 Preparation
@@ -108,12 +137,6 @@ Edit `/home/pi/.config/lxsessions/LXDE/autostart`
 
     @xscreensaver -no-splash
     @lxterminal -l -e /home/pi/picast/bin/picast
-
-
-Debug
------
-
-There is a debug log at `/var/tmp/picast.log`. It is configured in `logging.ini`.
 
 
 Known issues
@@ -146,3 +169,4 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
