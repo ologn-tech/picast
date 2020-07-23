@@ -39,6 +39,8 @@ A clear and concise description of what the bug is.
  - Monitor model and resolutions:
    * vendor/model: [e.g. ASUS 13' portable monitor with full-HD]
    * display configuration: `tvservice --status` command output.
+ - Running processes:
+   * output of `ps ax` command. 
 
 **Client environments**
  - Device type: [e.g. Google nexus 5, Dell note PC]
