@@ -71,13 +71,17 @@ Development
 -----------
 
 It is recommended to use virtualenv to deploy development environment.
+Because python3-gi module is a binding library to GTK++ libraray,
+so it is not easy to install using python standard pip.
+
+It is recommended to use system's site-packages python3-gi library.
 
 .. code-block:: console
 
     $ sudo apt install gstreamer1.0-tools
     $ git clone https://github.com/miurahr/picast.git picast
     $ cd picast
-    $ python3 -m venv venv
+    $ python3 -m venv --system-site-packages venv
     $ source venv/bin/activate
 
 
