@@ -105,7 +105,12 @@ class WifiP2PServer(threading.Thread):
             sleep(3)
             p2p_interface = wpacli.get_p2p_interface()
             if p2p_interface is None:
-                raise WpaException("Can not create P2P Wifi interface.")
+                interfaces = wpacli.get_interfaces()
+                message = "Can not create P2P Wifi interface.\n\nCurrent interfaces are:\n"
+                for it in interfaces:
+                    message += "{:s} ".format(it)
+                message += "\n"
+                raise WpaException(message)
             self.logger.info("Start p2p interface: {} address {}".format(p2p_interface, self.config.myaddress))
             os.system("sudo ifconfig {} {}".format(p2p_interface, self.config.myaddress))
         self.wlandev = p2p_interface
