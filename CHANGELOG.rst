@@ -25,6 +25,27 @@ Removed
 Security
 --------
 
+`v0.4.0`_
+=========
+
+Fixed
+-----
+
+* Ignoring default p2p-dev network interface (#18)
+* Fixed dhcp port already in use (#19)
+
+Added
+-----
+
+* NopPlayer for debug(#21)
+* Support other SBC than RaPi(#2)
+
+Changed
+-------
+
+* VLC player enhancement(#20)
+* Lint source by flake8-black and reformat with black(#27)
+
 `v0.3.3`_
 =========
 
@@ -162,7 +183,8 @@ Fixed
 * Forked from lazycast.
 
 
-.. _Unreleased: https://github.com/miurahr/picast/compare/v0.3.3...HEAD
+.. _Unreleased: https://github.com/miurahr/picast/compare/v0.4.0...HEAD
+.. _v0.4.0: https://github.com/miurahr/picast/compare/v0.3.3...v0.4.0
 .. _v0.3.3: https://github.com/miurahr/picast/compare/v0.3.2...v0.3.3
 .. _v0.3.2: https://github.com/miurahr/picast/compare/v0.3.1...v0.3.2
 .. _v0.3.1: https://github.com/miurahr/picast/compare/v0.3...v0.3.1
