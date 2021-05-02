@@ -71,7 +71,7 @@ def main(arg: Optional[Any] = None):
         logger.setLevel("DEBUG")
 
     if config.player == "gst":
-        player = GstPlayer()  # type: Optional[Union[GstPlayer, VlcPlayer]]
+        player: Optional[Union[GstPlayer, VlcPlayer, NopPlayer]] = GstPlayer()
     elif config.player == "vlc":
         player = VlcPlayer()
     elif config.player == "nop":
