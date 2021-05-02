@@ -113,7 +113,7 @@ class WpaCli:
     def get_p2p_interface(self) -> Optional[str]:
         sel, interfaces = self.get_interfaces()
         for it in interfaces:
-            if it.startswith("p2p-") and not it.startswith("p2p-dev")::
+            if it.startswith("p2p-") and not it.startswith("p2p-dev"):
                 return it
         return None
 
