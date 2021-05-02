@@ -33,7 +33,7 @@ gi.require_version('GstVideo', '1.0')  # noqa: E402 # isort:skip
 gi.require_version('GdkX11', '3.0')  # noqa: E402 # isort:skip
 
 from .rtspsink import RtspSink  # noqa: E402 # isort:skip
-from .player import GstPlayer, VlcPlayer  # noqa: E402 # isort:skip
+from .player import GstPlayer, VlcPlayer, NopPlayer  # noqa: E402 # isort:skip
 from .settings import Settings  # noqa: E402 # isort:skip
 from .wifip2p import WifiP2PServer  # noqa: E402 # isort:skip
 
@@ -74,6 +74,8 @@ def main(arg: Optional[Any] = None):
         player = GstPlayer()  # type: Optional[Union[GstPlayer, VlcPlayer]]
     elif config.player == "vlc":
         player = VlcPlayer()
+    elif config.player == "nop":
+        player = NopPlayer()
     else:
         player = None
         logger.fatal("FATAL: Unknown player name option!: {}".format(config.player))
