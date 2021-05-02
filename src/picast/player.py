@@ -24,25 +24,24 @@ from logging import getLogger
 
 import gi
 
-os.putenv('DISPLAY', ':0')  # noqa: E402 # isort:skip
-gi.require_version('Gst', '1.0')  # noqa: E402 # isort:skip
-gi.require_version('Gtk', '3.0')  # noqa: E402 # isort:skip
-gi.require_version('GstVideo', '1.0')  # noqa: E402 # isort:skip
-gi.require_version('GdkX11', '3.0')  # noqa: E402 # isort:skip
+os.putenv("DISPLAY", ":0")  # noqa: E402 # isort:skip
+gi.require_version("Gst", "1.0")  # noqa: E402 # isort:skip
+gi.require_version("Gtk", "3.0")  # noqa: E402 # isort:skip
+gi.require_version("GstVideo", "1.0")  # noqa: E402 # isort:skip
+gi.require_version("GdkX11", "3.0")  # noqa: E402 # isort:skip
 from gi.repository import Gst  # noqa: E402 # isort:skip
 
 from .settings import Settings  # noqa: E402 # isort:skip
 
 
-class NopPlayer():
-
-    def __init__(self, logger='picast'):
+class NopPlayer:
+    def __init__(self, logger="picast"):
         self.logger = getLogger(logger)
         self.proc = None
 
     def start(self):
         self.logger.debug("Start nop client.")
-        self.proc = subprocess.Popen(["echo", 'rtp://0.0.0.0:1028/wfd1.0/streamid=0'])
+        self.proc = subprocess.Popen(["echo", "rtp://0.0.0.0:1028/wfd1.0/streamid=0"])
 
     def stop(self):
         if self.proc is not None:
@@ -50,16 +49,24 @@ class NopPlayer():
             self.proc.terminate()
 
 
-class VlcPlayer():
-
-    def __init__(self, logger='picast'):
+class VlcPlayer:
+    def __init__(self, logger="picast"):
         self.config = Settings()
         self.logger = getLogger(logger)
         self.vlc = None
 
     def start(self):
         self.logger.debug("Start vlc client.")
-        self.vlc = subprocess.Popen(["cvlc", '--fullscreen', '--file-logging', '--logfile', self.config.player_log_file, 'rtp://0.0.0.0:1028/wfd1.0/streamid=0'])
+        self.vlc = subprocess.Popen(
+            [
+                "cvlc",
+                "--fullscreen",
+                "--file-logging",
+                "--logfile",
+                self.config.player_log_file,
+                "rtp://0.0.0.0:1028/wfd1.0/streamid=0",
+            ]
+        )
 
     def stop(self):
         if self.vlc is not None:
@@ -67,8 +74,8 @@ class VlcPlayer():
             self.vlc.terminate()
 
 
-class GstPlayer():
-    def __init__(self, logger='picast'):
+class GstPlayer:
+    def __init__(self, logger="picast"):
         self.config = Settings()
         self.logger = getLogger(logger)
         Gst.init(None)
@@ -76,14 +83,14 @@ class GstPlayer():
     def start(self):
         self.pipeline = Gst.Pipeline()
 
-        src = Gst.ElementFactory.make('udpsrc')
-        src.set_property('port', self.config.rtp_port)
-        src.set_property('caps', "application/x-rtp, media=video")
+        src = Gst.ElementFactory.make("udpsrc")
+        src.set_property("port", self.config.rtp_port)
+        src.set_property("caps", "application/x-rtp, media=video")
 
-        h264 = Gst.ElementFactory.make('rtph264depay')
+        h264 = Gst.ElementFactory.make("rtph264depay")
         omxdecode = Gst.ElementFactory.make(self.config.gst_decoder)
-        vconv = Gst.ElementFactory.make('videoconvert')
-        sink = Gst.ElementFactory.make('autovideosink')
+        vconv = Gst.ElementFactory.make("videoconvert")
+        sink = Gst.ElementFactory.make("autovideosink")
 
         for ele in [src, h264, omxdecode, vconv, sink]:
             self.pipeline.add(ele)
@@ -95,7 +102,7 @@ class GstPlayer():
 
         self.bus = self.pipeline.get_bus()
         self.bus.add_signal_watch()
-        self.bus.connect('message', self.on_message)
+        self.bus.connect("message", self.on_message)
         self.logger.debug("Start gst player...")
         self.pipeline.set_state(Gst.State.PLAYING)
 
@@ -106,16 +113,12 @@ class GstPlayer():
     def on_message(self, bus, message):
         mtype = message.type
         if mtype == Gst.MessageType.EOS:
-            self.pipeline.seek_simple(
-                Gst.Format.TIME,
-                Gst.SeekFlags.FLUSH | Gst.SeekFlags.KEY_UNIT,
-                0
-            )
+            self.pipeline.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH | Gst.SeekFlags.KEY_UNIT, 0)
         elif mtype == Gst.MessageType.ERROR:
-            if message.get_structure().get_name() == 'prepare-window-handle':
-                if hasattr(self, 'xid'):
+            if message.get_structure().get_name() == "prepare-window-handle":
+                if hasattr(self, "xid"):
                     message.src.set_window_handle(self.xid)
         elif mtype == Gst.MessageType.WARNING:
-            self.logger.debug('on_error():{}'.format(message.parse_error()))
+            self.logger.debug("on_error():{}".format(message.parse_error()))
 
         return True

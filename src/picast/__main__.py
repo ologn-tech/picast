@@ -26,11 +26,11 @@ from typing import Any, Optional, Union
 
 import gi
 
-os.putenv('DISPLAY', ':0')  # noqa: E402 # isort:skip
-gi.require_version('Gst', '1.0')  # noqa: E402 # isort:skip
-gi.require_version('Gtk', '3.0')  # noqa: E402 # isort:skip
-gi.require_version('GstVideo', '1.0')  # noqa: E402 # isort:skip
-gi.require_version('GdkX11', '3.0')  # noqa: E402 # isort:skip
+os.putenv("DISPLAY", ":0")  # noqa: E402 # isort:skip
+gi.require_version("Gst", "1.0")  # noqa: E402 # isort:skip
+gi.require_version("Gtk", "3.0")  # noqa: E402 # isort:skip
+gi.require_version("GstVideo", "1.0")  # noqa: E402 # isort:skip
+gi.require_version("GdkX11", "3.0")  # noqa: E402 # isort:skip
 
 from .rtspsink import RtspSink  # noqa: E402 # isort:skip
 from .player import GstPlayer, VlcPlayer, NopPlayer  # noqa: E402 # isort:skip
@@ -39,8 +39,9 @@ from .wifip2p import WifiP2PServer  # noqa: E402 # isort:skip
 
 
 def main(arg: Optional[Any] = None):
-    parser = argparse.ArgumentParser(prog='picast', description='picast',
-                                     formatter_class=argparse.RawTextHelpFormatter, add_help=True)
+    parser = argparse.ArgumentParser(
+        prog="picast", description="picast", formatter_class=argparse.RawTextHelpFormatter, add_help=True
+    )
     parser.add_argument("--debug", action="store_true", help="Verbose debug output")
     parser.add_argument("-c", "--config", help="Specify configuration file.")
 

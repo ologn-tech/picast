@@ -33,10 +33,7 @@ class PlatformType(enum.Enum):
 
 class Settings(object):
     # this class is Borg/Singleton
-    _shared_state = {
-        '_config': None,
-        '_lock': threading.Lock()
-    }
+    _shared_state = {"_config": None, "_lock": threading.Lock()}
 
     def __init__(self, config=None):
         self.__dict__ = self._shared_state
@@ -45,7 +42,7 @@ class Settings(object):
                 if self._config is None:
                     if config is None:
                         inidir = os.path.dirname(__file__)
-                        self.inifile = os.path.join(inidir, 'settings.ini')
+                        self.inifile = os.path.join(inidir, "settings.ini")
                     else:
                         inidir = os.path.dirname(config)
                         self.inifile = config
@@ -63,72 +60,72 @@ class Settings(object):
         self.platform = PlatformType.RaspberryPi  # FIXME
 
     def get_wfd_parameters(self):
-        return self._config['wfd_parameter']
+        return self._config["wfd_parameter"]
 
     @property
     def logging_config(self):
-        return self._config.get('logging', 'config')
+        return self._config.get("logging", "config")
 
     @property
     def logger(self):
-        return self._config.get('logging', 'logger')
+        return self._config.get("logging", "logger")
 
     @property
     def player(self):
-        return self._config.get('player', 'name')
+        return self._config.get("player", "name")
 
     @property
     def player_log_file(self):
-        return self._config.get('player', 'log_file')
+        return self._config.get("player", "log_file")
 
     @property
     def rtp_port(self):
-        return self._config.getint('network', 'rtp_port')
+        return self._config.getint("network", "rtp_port")
 
     @property
     def myaddress(self):
-        return self._config.get('network', 'myaddress')
+        return self._config.get("network", "myaddress")
 
     @property
     def peeraddress(self):
-        return self._config.get('network', 'peeraddress')
+        return self._config.get("network", "peeraddress")
 
     @property
     def netmask(self):
-        return self._config.get('network', 'netmask')
+        return self._config.get("network", "netmask")
 
     @property
     def wps_mode(self):
-        return self._config.get('p2p', 'wps_mode')
+        return self._config.get("p2p", "wps_mode")
 
     @property
     def pin(self):
-        return self._config.get('p2p', 'pin')
+        return self._config.get("p2p", "pin")
 
     @property
     def timeout(self):
-        return self._config.getint('p2p', 'timeout')
+        return self._config.getint("p2p", "timeout")
 
     @property
     def group_name(self):
-        return self._config.get('p2p', 'group_name')
+        return self._config.get("p2p", "group_name")
 
     @property
     def device_type(self):
-        return self._config.get('p2p', 'device_type')
+        return self._config.get("p2p", "device_type")
 
     @property
     def device_name(self):
-        return self._config.get('p2p', 'device_name')
+        return self._config.get("p2p", "device_name")
 
     @property
     def rtsp_port(self):
-        return self._config.getint('network', 'rtsp_port')
+        return self._config.getint("network", "rtsp_port")
 
     @property
     def gst_decoder(self):
-        return self._config.get('gst', 'decoder')
+        return self._config.get("gst", "decoder")
 
     @property
     def max_timeout(self):
-        return self._config.get('network', 'max_timeout')
+        return self._config.get("network", "max_timeout")

@@ -26,7 +26,7 @@ import zeroconf
 from .settings import Settings
 
 
-class ServiceDiscovery():
+class ServiceDiscovery:
     """Register and query mDNS/SD entries"""
 
     def __init__(self):
@@ -35,11 +35,15 @@ class ServiceDiscovery():
         self.zc = zeroconf.Zeroconf()
 
     def register(self):
-        service_info = zeroconf.ServiceInfo('_display._tcp.local.', 'PiCast Remote Display._display._tcp.local.',
-                                            addresses=[socket.inet_aton(self.config.myaddress)], port=self.config.rtsp_port)
+        service_info = zeroconf.ServiceInfo(
+            "_display._tcp.local.",
+            "PiCast Remote Display._display._tcp.local.",
+            addresses=[socket.inet_aton(self.config.myaddress)],
+            port=self.config.rtsp_port,
+        )
         self.zc.register_service(service_info, ttl=60, allow_name_change=False)
         self.logger.info("Register mDNS/SD entry.")
 
     def lookup(self):
-        service_info = self.zc.get_service_info('_displaysrc._tcp.local.', None)
+        service_info = self.zc.get_service_info("_displaysrc._tcp.local.", None)
         return service_info.addresses, service_info.port

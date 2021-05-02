@@ -26,10 +26,10 @@ from logging import getLogger
 from .settings import Settings
 
 
-class Dhcpd():
+class Dhcpd:
     """DHCP server daemon running in background."""
 
-    def __init__(self, interface: str, logger='picast'):
+    def __init__(self, interface: str, logger="picast"):
         """Constructor accept an interface to listen."""
         self.config = Settings()
         self.dhcpd = None
@@ -38,16 +38,19 @@ class Dhcpd():
         self.conf_path = self._create_conf()
 
     def _create_conf(self):
-        fd, conf_path = tempfile.mkstemp(suffix='.conf')
+        fd, conf_path = tempfile.mkstemp(suffix=".conf")
         conf = "start  {}\nend {}\ninterface {}\nnotify_file dumpleases\noption subnet {}\noption lease {}\n".format(
-            Settings().peeraddress, Settings().peeraddress, self.interface, Settings().netmask, Settings().timeout)
-        with open(conf_path, 'w') as c:
+            Settings().peeraddress, Settings().peeraddress, self.interface, Settings().netmask, Settings().timeout
+        )
+        with open(conf_path, "w") as c:
             c.write(conf)
         return conf_path
 
     def start(self):
         self.logger.debug("Start dhcpd server.")
-        self.dhcpd = subprocess.Popen(["sudo", "udhcpd", "-f", self.conf_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.dhcpd = subprocess.Popen(
+            ["sudo", "udhcpd", "-f", self.conf_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
         out, err = (None, None)
         try:
             out, err = self.dhcpd.communicate(timeout=1)
@@ -57,7 +60,9 @@ class Dhcpd():
         self.logger.debug("udhcpd stdout: {}".format(out))
         self.logger.debug("udhcpd stderr: {}".format(err))
         if self.dhcpd.returncode is not None and self.dhcpd.returncode != 0:
-            self.logger.fatal("Failed to start udhcp, please check debug for reasons, e.g. port is in use by dnsmsq or something ...")
+            self.logger.fatal(
+                "Failed to start udhcp, please check debug for reasons, e.g. port is in use by dnsmsq or something ..."
+            )
             os._exit(1)
 
     def stop(self):
