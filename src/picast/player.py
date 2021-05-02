@@ -34,6 +34,22 @@ from gi.repository import Gst  # noqa: E402 # isort:skip
 from .settings import Settings  # noqa: E402 # isort:skip
 
 
+class NopPlayer():
+
+    def __init__(self, logger='picast'):
+        self.logger = getLogger(logger)
+        self.proc = None
+
+    def start(self):
+        self.logger.debug("Start nop client.")
+        self.proc = subprocess.Popen(["echo", 'rtp://0.0.0.0:1028/wfd1.0/streamid=0'])
+
+    def stop(self):
+        if self.proc is not None:
+            self.logger.debug("Stop nop client.")
+            self.proc.terminate()
+
+
 class VlcPlayer():
 
     def __init__(self, logger='picast'):
