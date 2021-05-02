@@ -30,9 +30,8 @@ from .wpacli import WpaCli
 
 
 class WifiP2PServer(threading.Thread):
-
-    def __init__(self, R2=False, logger='picast'):
-        super(WifiP2PServer, self).__init__(name='wifi-p2p-0', daemon=False)
+    def __init__(self, R2=False, logger="picast"):
+        super(WifiP2PServer, self).__init__(name="wifi-p2p-0", daemon=False)
         self.config = Settings()
         self.logger = getLogger(logger)
         self.set_p2p_interface(R2)
@@ -63,23 +62,23 @@ class WifiP2PServer(threading.Thread):
         devinfo = type | session | wsd | pc | cp_support | ts
         control = 554  # Settings.rtsp_port
         max_tp = 300  # Mbps
-        return '0006{0:04x}{1:04x}{2:04x}'.format(devinfo, control, max_tp)
+        return "0006{0:04x}{1:04x}{2:04x}".format(devinfo, control, max_tp)
 
     def wfd_bssid(self, bssid: int) -> str:
-        return '0006{0:012X}'.format(bssid)
+        return "0006{0:012X}".format(bssid)
 
     def wfd_sink_info(self, status: int, mac: int) -> str:
-        return '0007{0:02X}{1:012X}'.format(status, mac)
+        return "0007{0:02X}{1:012X}".format(status, mac)
 
     def wfd_ext_cap(self, uibc=False, i2c=False) -> str:
         val_uibc = 0b1 if uibc else 0b0
         val_i2c = (0b1 if i2c else 0b0) << 1
         val = val_uibc | val_i2c
-        return '0002{0:04X}'.format(val)
+        return "0002{0:04X}".format(val)
 
     def wfd_devinfo2(self) -> str:
         r2_sink = 0b01
-        return '0002{0:04X}'.format(r2_sink)
+        return "0002{0:04X}".format(r2_sink)
 
     def create_p2p_interface(self, R2):
         wpacli = WpaCli()

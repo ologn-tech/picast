@@ -30,19 +30,19 @@ from .settings import Settings
 
 
 class GenericVideo:
-
     def __init__(self):
         self.native = 0x06  # type: int
         self.preferred = 0  # type: int
         self.profile = 0x01  # type: int
         self.level = 0x10  # type: int
-        self.cea = 0x00ffffff  # type: int
-        self.vesa = 0x00ffffff  # type: int
-        self.hh = 0x00ff  # type: int
+        self.cea = 0x00FFFFFF  # type: int
+        self.vesa = 0x00FFFFFF  # type: int
+        self.hh = 0x00FF  # type: int
 
     def get_wfd_video_formats(self) -> str:
-        return '{0:02X} {1:02X} {2:02X} {3:02X} {4:08X} {5:08X} {6:08X} 00 0000 0000 00 none none' \
-            .format(self.native, self.preferred, self.profile, self.level, self.cea, self.vesa, self.hh)
+        return "{0:02X} {1:02X} {2:02X} {3:02X} {4:08X} {5:08X} {6:08X} 00 0000 0000 00 none none".format(
+            self.native, self.preferred, self.profile, self.level, self.cea, self.vesa, self.hh
+        )
 
 
 class RasberryPiVideo:
@@ -54,13 +54,14 @@ class RasberryPiVideo:
         self.preferred = 0
         self.profile = 0x01
         self.level = 0x10
-        with open(os.path.join(os.path.dirname(__file__), 'resolutions.json'), 'r') as j:
+        with open(os.path.join(os.path.dirname(__file__), "resolutions.json"), "r") as j:
             self.resolutions = json.load(j)[0]
         self._get_display_resolutions()
 
     def get_wfd_video_formats(self) -> str:
-        return '{0:02X} {1:02X} {2:02X} {3:02X} {4:08X} {5:08X} {6:08X} 00 0000 0000 00 none none' \
-            .format(self.native, self.preferred, self.profile, self.level, self.cea, self.vesa, self.hh)
+        return "{0:02X} {1:02X} {2:02X} {3:02X} {4:08X} {5:08X} {6:08X} 00 0000 0000 00 none none".format(
+            self.native, self.preferred, self.profile, self.level, self.cea, self.vesa, self.hh
+        )
 
     class TvModes(enum.Enum):
         CEA = "-m CEA -j"
@@ -77,10 +78,10 @@ class RasberryPiVideo:
         status = []  # type: List[Dict[str, str]]
         if mode is self.TvModes.Current:
             data = self._call_tvservice("tvservice -s")
-            r = re.compile(r'([0-9]+)x([0-9]+),\s+@\s+([1-9][0-9])\.[0-9][0-9]HZ')
+            r = re.compile(r"([0-9]+)x([0-9]+),\s+@\s+([1-9][0-9])\.[0-9][0-9]HZ")
             m = r.match(data)
             if m is not None:
-                status = [{'width': m.group(1), 'height': m.group(2), 'rate': m.group(3)}]
+                status = [{"width": m.group(1), "height": m.group(2), "rate": m.group(3)}]
         elif mode is self.TvModes.CEA:
             data = self._call_tvservice("tvservice -m CEA -j")
             status = json.loads(data)
@@ -95,17 +96,17 @@ class RasberryPiVideo:
         hh = 0x00
         cea_resolutions = self._retrieve_tvservice(mode=self.TvModes.CEA)  # type: List[Dict[str, str]]
         for r in cea_resolutions:
-            res_list = self.resolutions['cea']
+            res_list = self.resolutions["cea"]
             for res in res_list:
-                if res['mode'] == r['code']:
-                    cea |= 1 << res['id']
+                if res["mode"] == r["code"]:
+                    cea |= 1 << res["id"]
                     break
         dmt_resolutions = self._retrieve_tvservice(mode=self.TvModes.DMT)  # type: List[Dict[str, str]]
         for r in dmt_resolutions:
-            res_list = self.resolutions['vesa']
+            res_list = self.resolutions["vesa"]
             for res in res_list:
-                if res['mode'] == r['code']:
-                    vesa |= 1 << res['id']
+                if res["mode"] == r["code"]:
+                    vesa |= 1 << res["id"]
                     break
         self.cea = cea
         self.vesa = vesa

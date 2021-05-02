@@ -32,7 +32,6 @@ from .video import RasberryPiVideo
 
 
 class RTSPTransport:
-
     def __init__(self, host, port):
         self.buffer = None
         self._max_attempt = 1000
@@ -77,8 +76,8 @@ class RTSPTransport:
         if self.buffer is None:
             self.buffer = self.sock.recv(1024)
         while True:
-            if b'\r\n' in self.buffer:
-                (line, self.buffer) = self.buffer.split(b'\r\n', 1)
+            if b"\r\n" in self.buffer:
+                (line, self.buffer) = self.buffer.split(b"\r\n", 1)
                 return line
             else:
                 more = self.sock.recv(1024)
@@ -91,16 +90,15 @@ class RTSPTransport:
             self.buffer = None
             return res
         else:
-            return b''
+            return b""
 
     def write(self, b: bytes):
         return self.sock.sendall(b)
 
 
 class RtspSink(threading.Thread):
-
-    def __init__(self,  player, logger='picast'):
-        super(RtspSink, self).__init__(name='rtsp-server-0', daemon=True)
+    def __init__(self, player, logger="picast"):
+        super(RtspSink, self).__init__(name="rtsp-server-0", daemon=True)
         self.config = Settings()
         self.logger = getLogger(logger)
         self.player = player
@@ -116,7 +114,7 @@ class RtspSink(threading.Thread):
         results = {}
         firstline = headers[0]
         regex = re.compile(r"RTSP/1.0 ([0-9]+) (\w+([ ]\w)*)")
-        if firstline.startswith('RTSP/1.0'):
+        if firstline.startswith("RTSP/1.0"):
             m = regex.match(firstline)
             if m:
                 status, reason = m.group(1, 2)
@@ -126,19 +124,19 @@ class RtspSink(threading.Thread):
             else:
                 raise ValueError
         else:
-            cmd, url, version = firstline.split(' ')
-            if version != 'RTSP/1.0':
+            cmd, url, version = firstline.split(" ")
+            if version != "RTSP/1.0":
                 raise ValueError
             resp = None
-        results['cmd'] = cmd
-        results['url'] = url
-        results['resp'] = resp
+        results["cmd"] = cmd
+        results["url"] = url
+        results["resp"] = resp
         for h in headers[1:]:
-            pos = h.find(':')
+            pos = h.find(":")
             if not pos:
                 break
             key = h[:pos]
-            val = h[pos + 2:]
+            val = h[pos + 2 :]
             results[key] = val
         return results
 
@@ -150,172 +148,180 @@ class RtspSink(threading.Thread):
             line = self.sock.readline()
 
         while line:
-            headers.append(line.decode('UTF-8'))
+            headers.append(line.decode("UTF-8"))
             line = self.sock.readline()
         self.logger.debug("<< {}".format(headers))
         return headers
 
     def read_body(self, headers) -> bytes:
-        length = headers.get('Content-Length', None)
+        length = headers.get("Content-Length", None)
         if length is None:
-            return b''
+            return b""
         length = int(length)
         return self.sock.read(length)
 
     @staticmethod
-    def _rtsp_response_header(cmd: Optional[str] = None, url: Optional[str] = None, res: Optional[str] = None,
-                              seq: Optional[str] = None, others: Optional[List[Tuple[str, str]]] = None) -> str:
+    def _rtsp_response_header(
+        cmd: Optional[str] = None,
+        url: Optional[str] = None,
+        res: Optional[str] = None,
+        seq: Optional[str] = None,
+        others: Optional[List[Tuple[str, str]]] = None,
+    ) -> str:
         if cmd is not None:
             msg = "{0:s} {1:s} RTSP/1.0".format(cmd, url)
         else:
             msg = "RTSP/1.0"
         if res is not None:
-            msg += ' {0}\r\nCSeq: {1}\r\n'.format(res, seq)
+            msg += " {0}\r\nCSeq: {1}\r\n".format(res, seq)
         else:
-            msg += '\r\nCSeq: {}\r\n'.format(seq)
+            msg += "\r\nCSeq: {}\r\n".format(seq)
         if others is not None:
             for k, v in others:
-                msg += '{}: {}\r\n'.format(k, v)
-        msg += '\r\n'
+                msg += "{}: {}\r\n".format(k, v)
+        msg += "\r\n"
         return msg
 
     @staticmethod
     def _parse_transport_header(data: str) -> Tuple[bool, str, str]:
-        """ Parse Transport header value such as "Transport: RTP/AVP/UDP;unicast;client_port=1028;server_port=5000"
-        """
+        """Parse Transport header value such as "Transport: RTP/AVP/UDP;unicast;client_port=1028;server_port=5000" """
         udp = True
-        client_port = '0'
-        server_port = '0'
-        paramlist = data.split(';')
+        client_port = "0"
+        server_port = "0"
+        paramlist = data.split(";")
         for p in paramlist:
-            if p.startswith('RTP'):
-                rtp, avp, prot = p.split('/')
-                if prot == 'UDP':
+            if p.startswith("RTP"):
+                rtp, avp, prot = p.split("/")
+                if prot == "UDP":
                     udp = True
-                elif prot == 'TCP':
+                elif prot == "TCP":
                     udp = False
                 else:
                     raise ValueError
-            elif p.startswith('unicast'):
+            elif p.startswith("unicast"):
                 pass
-            elif p.startswith('client_port'):
-                _, client_port = p.split('=')
-            elif p.startswith('server_port'):
-                _, server_port = p.split('=')
+            elif p.startswith("client_port"):
+                _, client_port = p.split("=")
+            elif p.startswith("server_port"):
+                _, server_port = p.split("=")
             else:
                 continue
         return udp, client_port, server_port
 
     def rtsp_m1(self) -> bool:
         headers = self.get_rtsp_headers()
-        if headers['cmd'] != 'OPTIONS':
+        if headers["cmd"] != "OPTIONS":
             return False
-        s_data = self._rtsp_response_header(seq=headers['CSeq'], res="200 OK",
-                                            others=[("Public", "org.wfa.wfd1.0, SET_PARAMETER, GET_PARAMETER")])
+        s_data = self._rtsp_response_header(
+            seq=headers["CSeq"], res="200 OK", others=[("Public", "org.wfa.wfd1.0, SET_PARAMETER, GET_PARAMETER")]
+        )
         self.logger.debug("<-{}".format(s_data))
-        self.sock.write(s_data.encode('ASCII'))
+        self.sock.write(s_data.encode("ASCII"))
         return True
 
     def rtsp_m2(self) -> bool:
         self.csnum = 100
-        s_data = self._rtsp_response_header(seq=str(self.csnum), cmd="OPTIONS",
-                                            url="*", others=[('Require', 'org.wfa.wfd1.0')])
+        s_data = self._rtsp_response_header(
+            seq=str(self.csnum), cmd="OPTIONS", url="*", others=[("Require", "org.wfa.wfd1.0")]
+        )
         self.logger.debug("<-{}".format(s_data))
-        self.sock.write(s_data.encode('ASCII'))
+        self.sock.write(s_data.encode("ASCII"))
         headers = self.get_rtsp_headers()
-        if headers['CSeq'] != '100' or headers['resp'] != "200 OK":
+        if headers["CSeq"] != "100" or headers["resp"] != "200 OK":
             return False
         return True
 
     def rtsp_m3(self) -> bool:
         headers = self.get_rtsp_headers()
-        if headers['cmd'] != 'GET_PARAMETER' or headers['url'] != 'rtsp://localhost/wfd1.0':
+        if headers["cmd"] != "GET_PARAMETER" or headers["url"] != "rtsp://localhost/wfd1.0":
             return False
         body = self.read_body(headers)
-        msg = ''
-        for req in body.decode('UTF-8').split('\r\n'):
-            if req == '':
+        msg = ""
+        for req in body.decode("UTF-8").split("\r\n"):
+            if req == "":
                 continue
-            elif req == 'wfd_client_rtp_ports':
+            elif req == "wfd_client_rtp_ports":
                 msg += "wfd_client_rtp_ports: RTP/AVP/UDP;unicast {} 0 mode=play\r\n".format(self.config.rtp_port)
-            elif req == 'wfd_video_formats':
-                msg += 'wfd_video_formats: {}\r\n'.format(self.wfd_video_formats)
+            elif req == "wfd_video_formats":
+                msg += "wfd_video_formats: {}\r\n".format(self.wfd_video_formats)
             elif req in self.wfd_parameters:
-                msg += '{}: {}\r\n'.format(req, self.wfd_parameters[req])
+                msg += "{}: {}\r\n".format(req, self.wfd_parameters[req])
             else:
-                msg += '{}: none\r\n'.format(req)
+                msg += "{}: none\r\n".format(req)
 
-        m3resp = self._rtsp_response_header(seq=headers['CSeq'], res="200 OK",
-                                            others=[('Content-Type', 'text/parameters'),
-                                                    ('Content-Length', str(len(msg)))
-                                                    ])
+        m3resp = self._rtsp_response_header(
+            seq=headers["CSeq"],
+            res="200 OK",
+            others=[("Content-Type", "text/parameters"), ("Content-Length", str(len(msg)))],
+        )
         m3resp += msg
         self.logger.debug("<-{}".format(m3resp))
-        self.sock.write(m3resp.encode('ASCII'))
+        self.sock.write(m3resp.encode("ASCII"))
         return True
 
     def rtsp_m4(self) -> bool:
         headers = self.get_rtsp_headers()
-        if headers['cmd'] != "SET_PARAMETER" or headers['url'] != "rtsp://localhost/wfd1.0":
+        if headers["cmd"] != "SET_PARAMETER" or headers["url"] != "rtsp://localhost/wfd1.0":
             return False
         self.read_body(headers)
         # FIXME: parse body here to retrieve video mode and set actual mode.
-        s_data = self._rtsp_response_header(res="200 OK", seq=headers['CSeq'])
+        s_data = self._rtsp_response_header(res="200 OK", seq=headers["CSeq"])
         self.logger.debug("<-{}".format(s_data))
-        self.sock.write(s_data.encode('ASCII'))
+        self.sock.write(s_data.encode("ASCII"))
         return True
 
     def rtsp_m5(self) -> bool:
         headers = self.get_rtsp_headers()
         self.read_body(headers)
-        if headers['cmd'] != 'SET_PARAMETER':
+        if headers["cmd"] != "SET_PARAMETER":
             self.logger.debug("M5: got other than SET_PARAMETER request.")
-            s_data = self._rtsp_response_header(res="400 Bad Requests", seq=headers['CSeq'])
+            s_data = self._rtsp_response_header(res="400 Bad Requests", seq=headers["CSeq"])
             self.logger.debug("<-{}".format(s_data))
-            self.sock.write(s_data.encode('ASCII'))
+            self.sock.write(s_data.encode("ASCII"))
             return False
         # FIXME: analyze body to have  'wfd_trigger_method: SETUP'
-        s_data = self._rtsp_response_header(res="200 OK", seq=headers['CSeq'])
+        s_data = self._rtsp_response_header(res="200 OK", seq=headers["CSeq"])
         self.logger.debug("<-{}".format(s_data))
-        self.sock.write(s_data.encode('ASCII'))
+        self.sock.write(s_data.encode("ASCII"))
         return True
 
     def rtsp_m6(self) -> Tuple[Optional[str], Optional[str]]:
         self.csnum += 1
         sessionid = None
         server_port = None
-        m6req = self._rtsp_response_header(cmd="SETUP",
-                                           url="rtsp://{0:s}/wfd1.0/streamid=0".format(self.config.peeraddress),
-                                           seq=str(self.csnum),
-                                           others=[
-                                               ('Transport',
-                                                'RTP/AVP/UDP;unicast;client_port={0:d}'.format(self.config.rtp_port))
-                                           ])
+        m6req = self._rtsp_response_header(
+            cmd="SETUP",
+            url="rtsp://{0:s}/wfd1.0/streamid=0".format(self.config.peeraddress),
+            seq=str(self.csnum),
+            others=[("Transport", "RTP/AVP/UDP;unicast;client_port={0:d}".format(self.config.rtp_port))],
+        )
         self.logger.debug("<-{}".format(m6req))
-        self.sock.write(m6req.encode('ASCII'))
+        self.sock.write(m6req.encode("ASCII"))
 
         headers = self.get_rtsp_headers()
-        if headers['CSeq'] is not None and headers['CSeq'] != str(self.csnum):
-            raise ValueError('Unmatch sequence number: {}'.format(headers['CSeq']))
-        if 'Transport' in headers:
-            assert headers['Transport'] is not None
-            udp, client_port, server_port = self._parse_transport_header(headers['Transport'])
+        if headers["CSeq"] is not None and headers["CSeq"] != str(self.csnum):
+            raise ValueError("Unmatch sequence number: {}".format(headers["CSeq"]))
+        if "Transport" in headers:
+            assert headers["Transport"] is not None
+            udp, client_port, server_port = self._parse_transport_header(headers["Transport"])
             self.logger.debug("server port {}".format(server_port))
-        if 'Session' in headers:
-            assert headers['Session'] is not None
-            sessionid = headers['Session'].split(';')[0]
+        if "Session" in headers:
+            assert headers["Session"] is not None
+            sessionid = headers["Session"].split(";")[0]
         return sessionid, server_port
 
     def rtsp_m7(self, sessionid: str) -> bool:
         self.csnum += 1
-        m7req = self._rtsp_response_header(cmd='PLAY',
-                                           url='rtsp://{0:s}/wfd1.0/streamid=0'.format(self.config.peeraddress),
-                                           seq=str(self.csnum),
-                                           others=[('Session', sessionid)])
+        m7req = self._rtsp_response_header(
+            cmd="PLAY",
+            url="rtsp://{0:s}/wfd1.0/streamid=0".format(self.config.peeraddress),
+            seq=str(self.csnum),
+            others=[("Session", sessionid)],
+        )
         self.logger.debug("<-{}".format(m7req))
-        self.sock.write(m7req.encode('ASCII'))
+        self.sock.write(m7req.encode("ASCII"))
         headers = self.get_rtsp_headers()
-        if headers['resp'] != "200 OK" or headers['CSeq'] != str(self.csnum):
+        if headers["resp"] != "200 OK" or headers["CSeq"] != str(self.csnum):
             return False
         return True
 
@@ -343,34 +349,34 @@ class RtspSink(threading.Thread):
         return False
 
     def is_keep_alive(self, headers):
-        return headers['cmd'] == "GET_PARAMETER" and headers['url'] == "rtsp://localhost/wfd1.0"
+        return headers["cmd"] == "GET_PARAMETER" and headers["url"] == "rtsp://localhost/wfd1.0"
 
     def is_parameter_change(self, headers):
-        return headers['cmd'] == "SET_PARAMETER"
+        return headers["cmd"] == "SET_PARAMETER"
 
     def keep_alive(self, headers):
         self.read_body(headers)
-        resp_msg = self._rtsp_response_header(seq=headers['CSeq'], res="200 OK")
-        self.sock.write(resp_msg.encode('ASCII'))
+        resp_msg = self._rtsp_response_header(seq=headers["CSeq"], res="200 OK")
+        self.sock.write(resp_msg.encode("ASCII"))
         return
 
     def parameter_change(self, headers):
         body = self.read_body(headers)
-        lines = body.decode('UTF-8').splitlines()
-        if 'wfd_trigger_method: TEARDOWN' in lines:
+        lines = body.decode("UTF-8").splitlines()
+        if "wfd_trigger_method: TEARDOWN" in lines:
             self.logger.debug("Got TEARDOWN request.")
             self.response_teardown(headers)
             self.teardown = True
         return
 
     def response_teardown(self, headers):
-        resp_msg = self._rtsp_response_header(seq=headers['CSeq'], res="200 OK")
-        self.sock.write(resp_msg.encode('ASCII'))
+        resp_msg = self._rtsp_response_header(seq=headers["CSeq"], res="200 OK")
+        self.sock.write(resp_msg.encode("ASCII"))
         m5_msg = self._rtsp_response_header(seq=str(self.csnum), cmd="TEARDOWN", url="rtsp://localhost/wfd1.0")
-        self.sock.write(m5_msg.encode('ASCII'))
+        self.sock.write(m5_msg.encode("ASCII"))
 
     def is_response(self, headers):
-        return headers['resp'] == "200 OK"
+        return headers["resp"] == "200 OK"
 
     def play(self) -> None:
         self.player.start()
