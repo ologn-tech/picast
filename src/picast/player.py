@@ -53,12 +53,13 @@ class NopPlayer():
 class VlcPlayer():
 
     def __init__(self, logger='picast'):
+        self.config = Settings()
         self.logger = getLogger(logger)
         self.vlc = None
 
     def start(self):
         self.logger.debug("Start vlc client.")
-        self.vlc = subprocess.Popen(["vlc", '--fullscreen', 'rtp://0.0.0.0:1028/wfd1.0/streamid=0'])
+        self.vlc = subprocess.Popen(["cvlc", '--fullscreen', '--file-logging', '--logfile', self.config.player_log_file, 'rtp://0.0.0.0:1028/wfd1.0/streamid=0'])
 
     def stop(self):
         if self.vlc is not None:
