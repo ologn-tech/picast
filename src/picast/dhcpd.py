@@ -47,7 +47,18 @@ class Dhcpd():
 
     def start(self):
         self.logger.debug("Start dhcpd server.")
-        self.dhcpd = subprocess.Popen(["sudo", "udhcpd", self.conf_path])
+        self.dhcpd = subprocess.Popen(["sudo", "udhcpd", "-f", self.conf_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = (None, None)
+        try:
+            out, err = self.dhcpd.communicate(timeout=1)
+        except subprocess.TimeoutExpired:
+            pass
+        self.logger.debug("udhcpd return code: {}".format(self.dhcpd.returncode))
+        self.logger.debug("udhcpd stdout: {}".format(out))
+        self.logger.debug("udhcpd stderr: {}".format(err))
+        if self.dhcpd.returncode is not None and self.dhcpd.returncode != 0:
+            self.logger.fatal("Failed to start udhcp, please check debug for reasons, e.g. port is in use by dnsmsq or something ...")
+            os._exit(1)
 
     def stop(self):
         if self.dhcpd is not None:
