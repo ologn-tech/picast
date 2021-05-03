@@ -387,6 +387,9 @@ class RtspSink(threading.Thread):
         while True:
             try:
                 headers = self.get_rtsp_headers()
+            except socket.timeout as e:
+                sleep(0.1)
+                continue
             except socket.error as e:
                 err = e.args[0]
                 if err == errno.EAGAIN or err == errno.EWOULDBLOCK or err == errno.EALREADY or err == errno.EINPROGRESS:
@@ -409,6 +412,7 @@ class RtspSink(threading.Thread):
                         self.player.stop()
                 elif self.is_response(headers):
                     if self.teardown:
+                        self.logger.info("---- Teardown completed ----")
                         break
                 else:
                     # ignore all other commands now...
