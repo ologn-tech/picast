@@ -2,6 +2,7 @@
 from picast.video import RasberryPiVideo
 from picast.wifip2p import WifiP2PServer
 from picast.wpacli import WpaCli
+from picast.exceptions import WpaException
 
 import pytest
 
@@ -37,6 +38,19 @@ def test_wpacli_start_p2p_find(monkeypatch):
 
 
 @pytest.mark.unit
+def test_wpacli_start_p2p_find_negative(monkeypatch):
+
+    def mockreturn(self, *args):
+        assert args == ('p2p_find', 'type=progressive',)
+        return "FAILED"
+
+    monkeypatch.setattr(WpaCli, "cmd", mockreturn)
+    wpacli = WpaCli()
+    with pytest.raises(WpaException):
+        wpacli.start_p2p_find()
+
+
+@pytest.mark.unit
 def test_wpacli_stop_p2p_find(monkeypatch):
 
     def mockreturn(self, *arg):
@@ -49,6 +63,18 @@ def test_wpacli_stop_p2p_find(monkeypatch):
 
 
 @pytest.mark.unit
+def test_wpacli_stop_p2p_find_negative(monkeypatch):
+
+    def mockreturn(self, *arg):
+        assert arg == ('p2p_stop_find',)
+        return "FAILED"
+
+    monkeypatch.setattr(WpaCli, "cmd", mockreturn)
+    wpacli = WpaCli()
+    with pytest.raises(WpaException):
+        wpacli.stop_p2p_find()
+
+@pytest.mark.unit
 def test_wpacli_set_device_name(monkeypatch):
 
     def mockreturn(self, *arg):
@@ -58,6 +84,19 @@ def test_wpacli_set_device_name(monkeypatch):
     monkeypatch.setattr(WpaCli, "cmd", mockreturn)
     wpacli = WpaCli()
     wpacli.set_device_name("foo")
+
+
+@pytest.mark.unit
+def test_wpacli_set_device_name_negative(monkeypatch):
+
+    def mockreturn(self, *arg):
+        assert arg == ("set", "device_name", "foo",)
+        return "FAILED"
+
+    monkeypatch.setattr(WpaCli, "cmd", mockreturn)
+    wpacli = WpaCli()
+    with pytest.raises(WpaException):
+        wpacli.set_device_name("foo")
 
 
 @pytest.mark.unit
@@ -73,6 +112,19 @@ def test_wpacli_set_device_type(monkeypatch):
 
 
 @pytest.mark.unit
+def test_wpacli_set_device_type_negative(monkeypatch):
+
+    def mockreturn(self, *arg):
+        assert arg == ("set", "device_type", "foo",)
+        return "FAILED"
+
+    monkeypatch.setattr(WpaCli, "cmd", mockreturn)
+    wpacli = WpaCli()
+    with pytest.raises(WpaException):
+        wpacli.set_device_type("foo")
+
+
+@pytest.mark.unit
 def test_wpacli_set_p2p_go_ht40(monkeypatch):
 
     def mockreturn(self, *arg):
@@ -82,6 +134,19 @@ def test_wpacli_set_p2p_go_ht40(monkeypatch):
     monkeypatch.setattr(WpaCli, "cmd", mockreturn)
     wpacli = WpaCli()
     wpacli.set_p2p_go_ht40()
+
+
+@pytest.mark.unit
+def test_wpacli_set_p2p_go_ht40_negative(monkeypatch):
+
+    def mockreturn(self, *arg):
+        assert arg == ("set", "p2p_go_ht40", "1",)
+        return "FAILED"
+
+    monkeypatch.setattr(WpaCli, "cmd", mockreturn)
+    wpacli = WpaCli()
+    with pytest.raises(WpaException):
+        wpacli.set_p2p_go_ht40()
 
 
 @pytest.mark.unit
@@ -95,6 +160,18 @@ def test_wpacli_wfd_subelem_set(monkeypatch):
     wpacli = WpaCli()
     wpacli.wfd_subelem_set(0, "00000000")
 
+
+@pytest.mark.unit
+def test_wpacli_wfd_subelem_set_negative(monkeypatch):
+
+    def mockreturn(self, *arg):
+        assert arg == ("wfd_subelem_set", "0", '00000000')
+        return "FAILED"
+
+    monkeypatch.setattr(WpaCli, "cmd", mockreturn)
+    wpacli = WpaCli()
+    with pytest.raises(WpaException):
+        wpacli.wfd_subelem_set(0, "00000000")
 
 @pytest.mark.unit
 def test_wpacli_p2p_group_add(monkeypatch):
@@ -118,6 +195,30 @@ def test_wpacli_wps_pin(monkeypatch):
     monkeypatch.setattr(WpaCli, "cmd", mockreturn)
     wpacli = WpaCli()
     wpacli.set_wps_pin("w1p0", '12345678', 300)
+
+
+@pytest.mark.unit
+def test_wpacli_wps_pbc(monkeypatch):
+
+    def mockreturn(self, *arg):
+        assert arg == ('-i', 'w1p0', 'wps_pbc')
+        return "OK"
+
+    monkeypatch.setattr(WpaCli, "cmd", mockreturn)
+    wpacli = WpaCli()
+    wpacli.start_wps_pbc("w1p0")
+
+
+@pytest.mark.unit
+def test_wpacli_p2p_connect(monkeypatch):
+
+    def mockreturn(self, *arg):
+        assert arg == ('-i', 'w1p0', 'p2p_connect', 'peer01', '12345678')
+        return "OK"
+
+    monkeypatch.setattr(WpaCli, "cmd", mockreturn)
+    wpacli = WpaCli()
+    wpacli.p2p_connect("w1p0", '12345678', 'peer01')
 
 
 @pytest.mark.unit
@@ -151,6 +252,26 @@ def test_wpa_get_interface(monkeypatch):
     selected, interfaces = wpacli.get_interfaces()
     assert selected == 'p2p-wlp4s0'
     assert interfaces == ['p2p-wlp4s0', 'wlp4s0']
+
+
+@pytest.mark.unit
+def test_wpa_check_p2p_interface_negative(monkeypatch):
+    def mockreturn(self, *arg):
+        assert arg == ('interface',)
+        return ["Selected interface 'wlan0'", "Available interfaces:", "wlan0"]
+    monkeypatch.setattr(WpaCli, "cmd", mockreturn)
+    wpacli = WpaCli()
+    assert wpacli.check_p2p_interface() == False
+
+
+@pytest.mark.unit
+def test_wpa_check_p2p_interface_negative_dev(monkeypatch):
+    def mockreturn(self, *arg):
+        assert arg == ('interface',)
+        return ["Selected interface 'p2p-dev-wlan0'", "Available interfaces:", "p2p-dev-wlan0", "wlan0"]
+    monkeypatch.setattr(WpaCli, "cmd", mockreturn)
+    wpacli = WpaCli()
+    assert wpacli.check_p2p_interface() == False
 
 
 @pytest.mark.unit
