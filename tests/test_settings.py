@@ -17,6 +17,10 @@ def test_config_logger():
 
 
 @pytest.mark.unit
+def test_config_logging_config():
+    assert Settings().logging_config == 'logging.ini'
+
+@pytest.mark.unit
 def test_config_myaddress():
     assert Settings().myaddress == '192.168.173.1'
 
@@ -59,3 +63,34 @@ def test_config_group_name():
 @pytest.mark.unit
 def test_config_pin():
     assert Settings().pin == '12345678'
+
+
+@pytest.mark.unit
+def test_config_player():
+    assert Settings().player == 'vlc'
+
+
+@pytest.mark.unit
+def test_config_player_log_file():
+    assert Settings().player_log_file == '/var/tmp/player.log'
+
+
+@pytest.mark.unit
+def test_config_wps_mode():
+    assert Settings().wps_mode == 'pin'
+
+
+@pytest.mark.unit
+def test_config_rtsp_port():
+    assert Settings().rtsp_port == 7236
+
+
+@pytest.mark.unit
+def test_config_max_timeout():
+    assert Settings().max_timeout == '10'
+
+
+@pytest.mark.unit
+def test_config_gst_decoder():
+    assert Settings().gst_decoder == 'omxh264dec'
+
