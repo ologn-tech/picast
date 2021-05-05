@@ -30,7 +30,7 @@ jobs:
           pip install tox tox-gh-actions coveralls coverage[toml]
       - name: Test project with tox
         if: ( steps.findPR.outputs.pr == false && github.event_name == 'push' ) || github.event_name == 'pull_request'
-        run: tox
+        run: tox --sitepackages
       - name: Upload coverage to coveralls
         if: ( steps.findPR.outputs.pr == false && github.event_name == 'push' ) || github.event_name == 'pull_request'
         run: coveralls
