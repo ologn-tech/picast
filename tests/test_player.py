@@ -4,7 +4,8 @@ import tempfile
 
 import pytest
 
-from picast.player import NopPlayer, VlcPlayer
+from picast.players.nop import NopPlayer
+from picast.players.vlc import VlcPlayer
 
 class ProcessMock:
 

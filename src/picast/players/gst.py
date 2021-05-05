@@ -19,7 +19,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import os
-import subprocess
 from logging import getLogger
 
 import gi
@@ -31,47 +30,7 @@ gi.require_version("GstVideo", "1.0")  # noqa: E402 # isort:skip
 gi.require_version("GdkX11", "3.0")  # noqa: E402 # isort:skip
 from gi.repository import Gst  # noqa: E402 # isort:skip
 
-from .settings import Settings  # noqa: E402 # isort:skip
-
-
-class NopPlayer:
-    def __init__(self, logger="picast"):
-        self.logger = getLogger(logger)
-        self.proc = None
-
-    def start(self):
-        self.logger.debug("Start nop client.")
-        self.proc = subprocess.Popen(["echo", "rtp://0.0.0.0:1028/wfd1.0/streamid=0"])
-
-    def stop(self):
-        if self.proc is not None:
-            self.logger.debug("Stop nop client.")
-            self.proc.terminate()
-
-
-class VlcPlayer:
-    def __init__(self, logger="picast"):
-        self.config = Settings()
-        self.logger = getLogger(logger)
-        self.vlc = None
-
-    def start(self):
-        self.logger.debug("Start vlc client.")
-        self.vlc = subprocess.Popen(
-            [
-                "cvlc",
-                "--fullscreen",
-                "--file-logging",
-                "--logfile",
-                self.config.player_log_file,
-                "rtp://0.0.0.0:1028/wfd1.0/streamid=0",
-            ]
-        )
-
-    def stop(self):
-        if self.vlc is not None:
-            self.logger.debug("Stop vlc client.")
-            self.vlc.terminate()
+from ..settings import Settings  # noqa: E402 # isort:skip
 
 
 class GstPlayer:
