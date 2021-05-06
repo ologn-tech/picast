@@ -68,6 +68,6 @@ class Dhcpd:
     def stop(self):
         if self.dhcpd is not None:
             self.dhcpd.terminate()
-            self.conf_path.unlink()
+            os.unlink(self.conf_path)
             # FIXME: workaround for sudo process killing.
             os.system("sudo pkill udhcpd")

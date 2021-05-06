@@ -82,7 +82,12 @@ Section [player]
 
 name
 
-    'name' of player, one of `vlc` or `gst` is accepted.
+    'name' of player, one of `vlc` or `gst` or `nop` is accepted.
+
+log_file
+
+    'log_file' is a filename of player logging. Players like vlc
+    will redirect all messages to that file.
 
 
 Section [gst]
