@@ -1,4 +1,5 @@
 import os
+import tempfile
 from logging import config as LoggingConfig
 
 from picast.settings import Settings
@@ -12,6 +13,22 @@ def test_logging_config():
 
 
 @pytest.mark.unit
+def test_config_override():
+    fd, temp_path = tempfile.mkstemp()
+    with open(temp_path, "w") as f:
+        f.write("[player]\n")
+        f.write("name=nop\n")
+    Settings()._config = None # Clean singletone state
+    assert Settings().device_name == 'picast'
+    assert Settings().player == 'vlc'
+    Settings()._config = None # Clena singletone state
+    assert Settings(config=temp_path).device_name == 'picast'
+    assert Settings(config=temp_path).player == 'nop'
+    Settings()._config = None # Clena singletone state
+    os.unlink(temp_path)
+
+
+@pytest.mark.unit
 def test_config_logger():
     assert Settings().logger == 'picast'
 
@@ -19,6 +36,7 @@ def test_config_logger():
 @pytest.mark.unit
 def test_config_logging_config():
     assert Settings().logging_config == 'logging.ini'
+
 
 @pytest.mark.unit
 def test_config_myaddress():

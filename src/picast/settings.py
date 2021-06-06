@@ -40,20 +40,20 @@ class Settings(object):
         if self._config is None:
             with self._lock:
                 if self._config is None:
-                    if config is None:
-                        inidir = os.path.dirname(__file__)
-                        self.inifile = os.path.join(inidir, "settings.ini")
-                    else:
-                        inidir = os.path.dirname(config)
-                        self.inifile = config
-                    self._config = self.configParse(self.inifile)
-                    self._platform = self._detect_platform()
+                    self._config = self.configParse(config)
 
-    def configParse(self, file_path):
-        if not os.path.exists(file_path):
-            raise IOError(file_path)
+    def configParse(self, custom_config):
+        inidir = os.path.dirname(__file__)
+        self.inifile = os.path.join(inidir, "settings.ini")
+        filenames = [self.inifile]
+        if custom_config is not None:
+            if not os.path.exists(custom_config):
+                raise IOError(custom_config)
+            inidir = os.path.dirname(custom_config)
+            self.inifile = custom_config
+            filenames.append(custom_config)
         config = configparser.ConfigParser()
-        config.read(file_path)
+        config.read(filenames)
         return config
 
     def _detect_platform(self):
