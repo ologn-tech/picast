@@ -82,7 +82,6 @@ class WifiP2PServer(threading.Thread):
 
     def create_p2p_interface(self, R2):
         wpacli = WpaCli()
-        wpacli.start_p2p_find()
         wpacli.set_device_name(self.config.device_name)
         wpacli.set_device_type(self.config.device_type)
         wpacli.set_p2p_go_ht40()
