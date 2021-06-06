@@ -94,6 +94,11 @@ def test_config_player_log_file():
 
 
 @pytest.mark.unit
+def test_config_player_custom_args():
+    assert Settings().player_custom_args == []
+
+
+@pytest.mark.unit
 def test_config_wps_mode():
     assert Settings().wps_mode == 'pin'
 
