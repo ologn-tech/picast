@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import configparser
 import enum
 import os
+import shlex
 import threading
 
 
@@ -77,6 +78,10 @@ class Settings(object):
     @property
     def player_log_file(self):
         return self._config.get("player", "log_file")
+
+    @property
+    def player_custom_args(self):
+        return shlex.split(self._config.get("player", "custom_args"))
 
     @property
     def rtp_port(self):

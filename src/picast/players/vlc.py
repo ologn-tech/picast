@@ -39,6 +39,7 @@ class VlcPlayer:
             [
                 "cvlc",
                 "--fullscreen",
+                *self.config.player_custom_args,
                 "--file-logging",
                 "--logfile",
                 self.config.player_log_file,
