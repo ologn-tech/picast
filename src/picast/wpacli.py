@@ -70,15 +70,24 @@ class WpaCli:
         if "OK" not in status:
             raise WpaException("Fail to set p2p_go_ht40")
 
+    def set_p2p_ssid_postfix(self, postfix: str):
+        self.logger.debug("wpa_cli set p2p_ssid_postfix _{}".format(postfix))
+        status = self.cmd("set", "p2p_ssid_postfix", "_{}".format(postfix))
+        if "OK" not in status:
+            raise WpaException("Fail to set p2p_ssid_postfix")
+
     def wfd_subelem_set(self, key: int, val: str):
         self.logger.debug("wpa_cli wfd_subelem_set {0:d} {1:s}".format(key, val))
         status = self.cmd("wfd_subelem_set", "{0:d}".format(key), val)
         if "OK" not in status:
             raise WpaException("Fail to wfd_subelem_set.")
 
-    def p2p_group_add(self, name: str):
-        self.logger.debug("wpa_cli p2p_group_add {}".format(name))
-        self.cmd("p2p_group_add", name)
+    def p2p_group_add(self, network_id: str):
+        group_option = "persistent"
+        if network_id is not None:
+            group_option = "persistent={}".format(network_id)
+        self.logger.debug("wpa_cli p2p_group_add {}".format(group_option))
+        self.cmd("p2p_group_add", group_option)
 
     def set_wps_pin(self, interface: str, pin: str, timeout: int):
         self.logger.debug("wpa_cli -i {0:s} wps_pin any {1:s} {2:d}".format(interface, pin, timeout))
@@ -121,3 +130,13 @@ class WpaCli:
         if self.get_p2p_interface() is not None:
             return True
         return False
+
+    def get_persistent_group_network_id(self, postfix: str) -> Optional[str]:
+        network_id = None
+        networks = self.cmd("list_networks")
+        for n in networks:
+            m = re.match(r"^([0-9]+)\s*?([^\s]+).*$", n)
+            if m is not None:
+                if m.group(2).endswith("_{}".format(postfix)):
+                    network_id = m.group(1)
+        return network_id

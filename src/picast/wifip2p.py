@@ -85,13 +85,17 @@ class WifiP2PServer(threading.Thread):
         wpacli.set_device_name(self.config.device_name)
         wpacli.set_device_type(self.config.device_type)
         wpacli.set_p2p_go_ht40()
+        wpacli.set_p2p_ssid_postfix(self.config.device_name)
         wpacli.wfd_subelem_set(0, self.wfd_devinfo())
         wpacli.wfd_subelem_set(1, self.wfd_bssid(0))
         wpacli.wfd_subelem_set(6, self.wfd_sink_info(0, 0))
         wpacli.wfd_subelem_set(7, self.wfd_ext_cap(uibc=False, i2c=False))
         if R2:
             wpacli.wfd_subelem_set(11, self.wfd_devinfo2())
-        wpacli.p2p_group_add(self.config.group_name)
+        network_id = None
+        if not self.config.recreate_group:
+            network_id = wpacli.get_persistent_group_network_id(self.config.device_name)
+        wpacli.p2p_group_add(network_id)
 
     def set_p2p_interface(self, R2):
         wpacli = WpaCli()

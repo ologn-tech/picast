@@ -173,17 +173,32 @@ def test_wpacli_wfd_subelem_set_negative(monkeypatch):
     with pytest.raises(WpaException):
         wpacli.wfd_subelem_set(0, "00000000")
 
+
 @pytest.mark.unit
 def test_wpacli_p2p_group_add(monkeypatch):
 
     def mockreturn(self, *arg):
-        assert arg == ("p2p_group_add", 'group')
+        assert arg == ("p2p_group_add", 'persistent=42')
         return "OK"
 
     monkeypatch.setattr(WpaCli, "cmd", mockreturn)
     wpacli = WpaCli()
-    wpacli.p2p_group_add("group")
+    wpacli.p2p_group_add("42")
 
+
+@pytest.mark.unit
+def test_wpacli_get_persistent_group_network_id(monkeypatch):
+
+    def mockreturn(self, *arg):
+        assert arg == ("list_networks", )
+        return ["Selected interface 'p2p-dev-wlan0",
+                "network id / ssid / bssid / flags",
+                "0       Some_wifi any",
+                "1       DIRECT-3E_picast       aa:22:cc:33:dd:44       [DISABLED][P2P-PERSISTENT]"]
+
+    monkeypatch.setattr(WpaCli, "cmd", mockreturn)
+    wpacli = WpaCli()
+    assert wpacli.get_persistent_group_network_id("picast") == "1"
 
 @pytest.mark.unit
 def test_wpacli_wps_pin(monkeypatch):

@@ -74,8 +74,8 @@ def test_config_device_type():
 
 
 @pytest.mark.unit
-def test_config_group_name():
-    assert Settings().group_name == 'persistent'
+def test_config_recreate_group():
+    assert Settings().recreate_group == False
 
 
 @pytest.mark.unit

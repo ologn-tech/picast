@@ -112,8 +112,8 @@ class Settings(object):
         return self._config.getint("p2p", "timeout")
 
     @property
-    def group_name(self):
-        return self._config.get("p2p", "group_name")
+    def recreate_group(self):
+        return self._config.getboolean("p2p", "recreate_group")
 
     @property
     def device_type(self):
