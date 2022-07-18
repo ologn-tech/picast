@@ -64,7 +64,7 @@ class RasberryPiVideo:
     def _retrieve_mode(self) -> List[Dict[str, str]]:
         logger = getLogger(self.config.logger)
         status = []  # type: List[Dict[str, str]]
-        data = subprocess.Popen("/usr/bin/modetest", stdout=subprocess.PIPE).communicate()[0].decode("UTF-8")
+        data = subprocess.Popen("/usr/bin/modetest", stdout=subprocess.PIPE, shell=True).communicate()[0].decode("UTF-8")
         modeline = False
         for line in data.splitlines():
             if "modes:" in line:
