@@ -3,7 +3,7 @@
 """
 picast - a simple wireless display receiver for Raspberry Pi
 
-    Copyright (C) 2019,2020 Hiroshi Miura
+    Copyright (C) 2019-2022 Hiroshi Miura
     Copyright (C) 2018 Hsun-Wei Cho
 
 This program is free software: you can redistribute it and/or modify
@@ -18,10 +18,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import enum
 import json
 import os
-import re
 import subprocess
 from logging import getLogger
 from typing import Dict, List
@@ -63,46 +61,36 @@ class RasberryPiVideo:
             self.native, self.preferred, self.profile, self.level, self.cea, self.vesa, self.hh
         )
 
-    class TvModes(enum.Enum):
-        CEA = "-m CEA -j"
-        DMT = "-m DMT -j"
-        Current = "-s"
-
-    def _call_tvservice(self, cmd):
+    def _retrieve_mode(self) -> List[Dict[str, str]]:
         logger = getLogger(self.config.logger)
-        data = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).communicate()[0]
-        logger.debug("tvservice: {}".format(data))
-        return data
-
-    def _retrieve_tvservice(self, mode: TvModes) -> List[Dict[str, str]]:
         status = []  # type: List[Dict[str, str]]
-        if mode is self.TvModes.Current:
-            data = self._call_tvservice("tvservice -s")
-            r = re.compile(r"([0-9]+)x([0-9]+),\s+@\s+([1-9][0-9])\.[0-9][0-9]HZ")
-            m = r.match(data)
-            if m is not None:
-                status = [{"width": m.group(1), "height": m.group(2), "rate": m.group(3)}]
-        elif mode is self.TvModes.CEA:
-            data = self._call_tvservice("tvservice -m CEA -j")
-            status = json.loads(data)
-        else:
-            data = self._call_tvservice("tvservice -m DMT -j")
-            status = json.loads(data)
+        data = subprocess.Popen("/usr/bin/modetest", stdout=subprocess.PIPE, shell=True).communicate()[0].decode("UTF-8")
+        modeline = False
+        for line in data.splitlines():
+            if "modes:" in line:
+                modeline = True
+            if not modeline:
+                continue
+            if "props:" in line:
+                break
+            if line.startswith("#"):
+                entries = line.split(" ")
+                status.append({"width": entries[3], "height": entries[7], "rate": entries[2]})
+                logger.info("Added {}x{}x{}".format(entries[3], entries[7], entries[2]))
         return status
 
     def _get_display_resolutions(self) -> None:
         cea = 0x01
         vesa = 0x00
         hh = 0x00
-        cea_resolutions = self._retrieve_tvservice(mode=self.TvModes.CEA)  # type: List[Dict[str, str]]
-        for r in cea_resolutions:
+        modes = self._retrieve_mode()  # type: List[Dict[str, str]]
+        for r in modes:
             res_list = self.resolutions["cea"]
             for res in res_list:
                 if res["mode"] == r["code"]:
                     cea |= 1 << res["id"]
                     break
-        dmt_resolutions = self._retrieve_tvservice(mode=self.TvModes.DMT)  # type: List[Dict[str, str]]
-        for r in dmt_resolutions:
+        for r in modes:
             res_list = self.resolutions["vesa"]
             for res in res_list:
                 if res["mode"] == r["code"]:
