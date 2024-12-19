@@ -110,7 +110,7 @@ class WifiP2PServer(threading.Thread):
                 interfaces = wpacli.get_interfaces()
                 message = "Can not create P2P Wifi interface.\n\nCurrent interfaces are:\n"
                 for it in interfaces:
-                    message += "{:s} ".format(it)
+                    message += "{} ".format(it)
                 message += "\n"
                 raise WpaException(message)
             self.logger.info("Start p2p interface: {} address {}".format(p2p_interface, self.config.myaddress))
